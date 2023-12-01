@@ -19,6 +19,7 @@ from opencood.models.fuse_modules.self_attn import AttFusion
 from opencood.models.sub_modules.auto_encoder import AutoEncoder
 
 
+
 # conv2d + bn + relu
 class Conv2d(nn.Module):
 

@@ -11,10 +11,11 @@ from torch.autograd import Variable
 from opencood.models.sub_modules.pillar_vfe import PillarVFE
 from opencood.utils.common_utils import torch_tensor_to_numpy
 
+from raaconv import AttentionConv2D, AttentionConvTranspose2D,Conv2dFactory
+
 
 # conv2d + bn + relu
 class Conv2d(nn.Module):
-
     def __init__(self, in_channels, out_channels, k, s, p, activation=True,
                  batch_norm=True):
         super(Conv2d, self).__init__()
@@ -137,29 +138,37 @@ class RPN(nn.Module):
         super(RPN, self).__init__()
         self.anchor_num = anchor_num
 
-        self.block_1 = [Conv2d(128, 128, 3, 2, 1)]
-        self.block_1 += [Conv2d(128, 128, 3, 1, 1) for _ in range(3)]
+        # Conv layers
+        self.block_1 = [Conv2dFactory.AttentionConv2d(128, 128, 3, 2, 1)]
+        self.block_1 += [Conv2dFactory.AttentionConv2d(128, 128, 3, 1, 1) for _ in range(3)]
         self.block_1 = nn.Sequential(*self.block_1)
 
-        self.block_2 = [Conv2d(128, 128, 3, 2, 1)]
-        self.block_2 += [Conv2d(128, 128, 3, 1, 1) for _ in range(5)]
+        self.block_2 = [Conv2dFactory.AttentionConv2d(128, 128, 3, 2, 1)]
+        self.block_2 += [Conv2dFactory.AttentionConv2d(128, 128, 3, 1, 1) for _ in range(5)]
         self.block_2 = nn.Sequential(*self.block_2)
 
-        self.block_3 = [Conv2d(128, 256, 3, 2, 1)]
+        self.block_3 = [Conv2dFactory.AttentionConv2d(128, 256, 3, 2, 1)]
         self.block_3 += [nn.Conv2d(256, 256, 3, 1, 1) for _ in range(5)]
         self.block_3 = nn.Sequential(*self.block_3)
 
-        self.deconv_1 = nn.Sequential(nn.ConvTranspose2d(256, 256, 4, 4, 0),
+        # Deconv layers
+        self.deconv_1 = nn.Sequential(Conv2dFactory.AttentionConvTranspose2d(256, 256, 4, 4, 0),
                                       nn.BatchNorm2d(256))
-        self.deconv_2 = nn.Sequential(nn.ConvTranspose2d(128, 256, 2, 2, 0),
+        self.deconv_2 = nn.Sequential(Conv2dFactory.AttentionConvTranspose2d(128, 256, 2, 2, 0),
                                       nn.BatchNorm2d(256))
-        self.deconv_3 = nn.Sequential(nn.ConvTranspose2d(128, 256, 1, 1, 0),
+        self.deconv_3 = nn.Sequential(Conv2dFactory.AttentionConvTranspose2d(128, 256, 1, 1, 0),
                                       nn.BatchNorm2d(256))
+        # self.deconv_1 = nn.Sequential(nn.ConvTranspose2d(256, 256, 4, 4, 0),
+        #                               nn.BatchNorm2d(256))
+        # self.deconv_2 = nn.Sequential(nn.ConvTranspose2d(128, 256, 2, 2, 0),
+        #                               nn.BatchNorm2d(256))
+        # self.deconv_3 = nn.Sequential(nn.ConvTranspose2d(128, 256, 1, 1, 0),
+        #                               nn.BatchNorm2d(256))
 
-        self.score_head = Conv2d(768, self.anchor_num, 1, 1, 0,
-                                 activation=False, batch_norm=False)
-        self.reg_head = Conv2d(768, 7 * self.anchor_num, 1, 1, 0,
-                               activation=False, batch_norm=False)
+        self.score_head = Conv2dFactory.AttentionConv2d(768, self.anchor_num, 1, 1, 0,
+                                                        activation=False, batch_norm=False)
+        self.reg_head = Conv2dFactory.AttentionConv2d(768, 7 * self.anchor_num, 1, 1, 0,
+                                                      activation=False, batch_norm=False)
 
     def forward(self, x):
         x = self.block_1(x)

@@ -10,6 +10,8 @@ from opencood.models.sub_modules.sparse_backbone_3d import VoxelBackBone8x
 from opencood.models.sub_modules.height_compression import HeightCompression
 from opencood.models.sub_modules.base_bev_backbone import BaseBEVBackbone
 
+from raaconv import Conv2dFactory
+
 
 class Second(nn.Module):
     def __init__(self, args):
@@ -27,13 +29,16 @@ class Second(nn.Module):
         self.backbone_2d = BaseBEVBackbone(args['base_bev_backbone'], 256)
 
         # head
-        self.cls_head = nn.Conv2d(256 * 2, args['anchor_number'],
-                                  kernel_size=1)
-        self.reg_head = nn.Conv2d(256 * 2, 7 * args['anchor_num'],
-                                  kernel_size=1)
+        # self.cls_head = nn.Conv2d(256 * 2, args['anchor_number'],
+        #                           kernel_size=1)
+        # self.reg_head = nn.Conv2d(256 * 2, 7 * args['anchor_num'],
+        #                           kernel_size=1)
+        self.cls_head = Conv2dFactory.AttentionConv2d(256 * 2, args['anchor_number'],
+                                                      1,1,0)
+        self.reg_head = Conv2dFactory.AttentionConv2d(256 * 2, 7 * args['anchor_num'],
+                                                      1,1,0)
 
     def forward(self, data_dict):
-
         voxel_features = data_dict['processed_lidar']['voxel_features']
         voxel_coords = data_dict['processed_lidar']['voxel_coords']
         voxel_num_points = data_dict['processed_lidar']['voxel_num_points']

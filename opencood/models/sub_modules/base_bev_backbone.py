@@ -40,7 +40,7 @@ class BaseBEVBackbone(nn.Module):
         for idx in range(num_levels):
             cur_layers = [
                 nn.ZeroPad2d(1),
-                Conv2dFactory.AttentionConv2d(c_in_list[idx], num_filters[idx], 3,layer_strides[idx],0),
+                Conv2dFactory.conv(c_in_list[idx], num_filters[idx], 3,layer_strides[idx],0),
                 # nn.Conv2d(
                 #     c_in_list[idx], num_filters[idx], kernel_size=3,
                 #     stride=layer_strides[idx], padding=0, bias=False
@@ -50,7 +50,7 @@ class BaseBEVBackbone(nn.Module):
             ]
             for k in range(layer_nums[idx]):
                 cur_layers.extend([
-                    Conv2dFactory.AttentionConv2d(c_in_list[idx], num_filters[idx], 3,layer_strides[idx],0),
+                    Conv2dFactory.conv(c_in_list[idx], num_filters[idx], 3,layer_strides[idx],0),
                     # nn.Conv2d(num_filters[idx], num_filters[idx],
                     #           kernel_size=3, padding=1, bias=False),
                     nn.BatchNorm2d(num_filters[idx], eps=1e-3, momentum=0.01),
@@ -74,7 +74,7 @@ class BaseBEVBackbone(nn.Module):
                 else:
                     stride = np.round(1 / stride).astype(np.int)
                     self.deblocks.append(nn.Sequential(
-                    Conv2dFactory.AttentionConv2d(c_in_list[idx], num_filters[idx], stride,stride,0),
+                    Conv2dFactory.conv(c_in_list[idx], num_filters[idx], stride,stride,0),
                         # nn.Conv2d(
                         #     num_filters[idx], num_upsample_filters[idx],
                         #     stride,
@@ -90,7 +90,7 @@ class BaseBEVBackbone(nn.Module):
             self.deblocks.append(nn.Sequential(
                 # nn.ConvTranspose2d(c_in, c_in, upsample_strides[-1],
                 #                    stride=upsample_strides[-1], bias=False),
-                Conv2dFactory.AttentionConvTranspose2d(c_in, c_in, upsample_strides[-1],upsample_strides[-1],0),
+                Conv2dFactory.ConvTranspose(c_in, c_in, upsample_strides[-1],upsample_strides[-1],0),
                 nn.BatchNorm2d(c_in, eps=1e-3, momentum=0.01),
                 nn.ReLU(),
             ))

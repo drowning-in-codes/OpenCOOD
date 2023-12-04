@@ -25,18 +25,15 @@ class Second(nn.Module):
                                            4, args['grid_size'])
         # height compression
         self.height_compression = HeightCompression(args['height_compression'])
-        # base ben backbone
+        # base bev backbone
         self.backbone_2d = BaseBEVBackbone(args['base_bev_backbone'], 256)
 
         # head
-        # self.cls_head = nn.Conv2d(256 * 2, args['anchor_number'],
-        #                           kernel_size=1)
-        # self.reg_head = nn.Conv2d(256 * 2, 7 * args['anchor_num'],
-        #                           kernel_size=1)
-        self.cls_head = Conv2dFactory.AttentionConv2d(256 * 2, args['anchor_number'],
-                                                      1,1,0)
-        self.reg_head = Conv2dFactory.AttentionConv2d(256 * 2, 7 * args['anchor_num'],
-                                                      1,1,0)
+        self.cls_head = nn.Conv2d(256 * 2, args['anchor_number'],
+                                  kernel_size=1)
+        self.reg_head = nn.Conv2d(256 * 2, 7 * args['anchor_num'],
+                                  kernel_size=1)
+
 
     def forward(self, data_dict):
         voxel_features = data_dict['processed_lidar']['voxel_features']

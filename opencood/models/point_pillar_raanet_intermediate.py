@@ -29,7 +29,6 @@ class PointPillarIntermediate(nn.Module):
                                   kernel_size=1)
 
     def forward(self, data_dict):
-
         voxel_features = data_dict['processed_lidar']['voxel_features']
         voxel_coords = data_dict['processed_lidar']['voxel_coords']
         voxel_num_points = data_dict['processed_lidar']['voxel_num_points']

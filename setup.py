@@ -25,6 +25,6 @@ setup(
     author_email='rxx3386@ucla.edu',
     description='An opensource pytorch framework for autonomous driving '
                 'cooperative detection',
-    long_description=open("README.md").read(),
+    long_description=open("README.md",encoding="utf-8").read(),
     install_requires=_read_requirements_file(),
 )

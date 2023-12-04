@@ -4,6 +4,7 @@ import torch.nn as nn
 
 from opencood.models.fuse_modules.self_attn import AttFusion
 from opencood.models.sub_modules.auto_encoder import AutoEncoder
+from ..raaconv import Conv2dFactory
 
 
 class AttBEVBackbone(nn.Module):
@@ -51,9 +52,9 @@ class AttBEVBackbone(nn.Module):
         for idx in range(num_levels):
             cur_layers = [
                 nn.ZeroPad2d(1),
-                nn.Conv2d(
-                    c_in_list[idx], num_filters[idx], kernel_size=3,
-                    stride=layer_strides[idx], padding=0, bias=False
+                Conv2dFactory.conv(
+                    c_in_list[idx], num_filters[idx], 3,
+                    layer_strides[idx], 0, bias=False
                 ),
                 nn.BatchNorm2d(num_filters[idx], eps=1e-3, momentum=0.01),
                 nn.ReLU()
@@ -63,12 +64,12 @@ class AttBEVBackbone(nn.Module):
             self.fuse_modules.append(fuse_network)
             if self.compress and self.compress_layer - idx > 0:
                 self.compression_modules.append(AutoEncoder(num_filters[idx],
-                                                            self.compress_layer-idx))
+                                                            self.compress_layer - idx))
 
             for k in range(layer_nums[idx]):
                 cur_layers.extend([
-                    nn.Conv2d(num_filters[idx], num_filters[idx],
-                              kernel_size=3, padding=1, bias=False),
+                    Conv2dFactory.conv(num_filters[idx], num_filters[idx],
+                                       3, 1, 1, bias=False),
                     nn.BatchNorm2d(num_filters[idx], eps=1e-3, momentum=0.01),
                     nn.ReLU()
                 ])
@@ -78,10 +79,10 @@ class AttBEVBackbone(nn.Module):
                 stride = upsample_strides[idx]
                 if stride >= 1:
                     self.deblocks.append(nn.Sequential(
-                        nn.ConvTranspose2d(
+                        Conv2dFactory.ConvTranspose(
                             num_filters[idx], num_upsample_filters[idx],
                             upsample_strides[idx],
-                            stride=upsample_strides[idx], bias=False
+                            upsample_strides[idx], 0, bias=False
                         ),
                         nn.BatchNorm2d(num_upsample_filters[idx],
                                        eps=1e-3, momentum=0.01),
@@ -90,10 +91,9 @@ class AttBEVBackbone(nn.Module):
                 else:
                     stride = np.round(1 / stride).astype(np.int)
                     self.deblocks.append(nn.Sequential(
-                        nn.Conv2d(
+                        Conv2dFactory.conv(
                             num_filters[idx], num_upsample_filters[idx],
-                            stride,
-                            stride=stride, bias=False
+                            stride, stride, 0, bias=False
                         ),
                         nn.BatchNorm2d(num_upsample_filters[idx], eps=1e-3,
                                        momentum=0.01),
@@ -103,8 +103,8 @@ class AttBEVBackbone(nn.Module):
         c_in = sum(num_upsample_filters)
         if len(upsample_strides) > num_levels:
             self.deblocks.append(nn.Sequential(
-                nn.ConvTranspose2d(c_in, c_in, upsample_strides[-1],
-                                   stride=upsample_strides[-1], bias=False),
+                Conv2dFactory.ConvTranspose(c_in, c_in, upsample_strides[-1],
+                                            upsample_strides[-1], 0, bias=False),
                 nn.BatchNorm2d(c_in, eps=1e-3, momentum=0.01),
                 nn.ReLU(),
             ))

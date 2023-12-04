@@ -64,15 +64,15 @@ class Conv2dFactory:
     def conv(cls, in_channels, out_channels, k, s, p, activation=True,
              batch_norm=True, bias=False, flag=True):
         if flag:
-            return cls.AttentionConv2d(in_channels, out_channels, k, s, p, activation, bias=bias)
+            return cls.AttentionConv2d(in_channels, out_channels, k, s, p, bias=bias)
         else:
             return cls.Conv2d(in_channels, out_channels, k, s, p, activation, batch_norm)
 
     @classmethod
-    def Conv2dTranspose(cls, in_channels, out_channels, k, s, p, activation=True,
+    def ConvTranspose(cls, in_channels, out_channels, k, s, p, activation=True,
                         batch_norm=True, bias=False, flag=True):
         if flag:
-            return cls.AttentionConvTranspose2d(in_channels, out_channels, k, s, p, activation, bias=bias)
+            return cls.AttentionConvTranspose2d(in_channels, out_channels, k, s, p, bias=bias)
         else:
             return nn.ConvTranspose2d(in_channels, out_channels, k, s, p, activation, batch_norm)
 

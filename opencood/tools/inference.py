@@ -59,7 +59,7 @@ def main():
     print(f"{len(opencood_dataset)} samples found.")
     data_loader = DataLoader(opencood_dataset,
                              batch_size=1,
-                             num_workers=16,
+                             num_workers=0,
                              collate_fn=opencood_dataset.collate_batch_test,
                              shuffle=False,
                              pin_memory=False,

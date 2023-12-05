@@ -9,12 +9,12 @@ import torch.nn as nn
 
 from opencood.models.sub_modules.pillar_vfe import PillarVFE
 from opencood.models.sub_modules.point_pillar_scatter import PointPillarScatter
-from opencood.models.sub_modules.att_bev_backbone import AttBEVBackbone
+from opencood.models.sub_modules.raanet_bev_backbone import AttBEVBackbone
 
-class PointPillarIntermediate(nn.Module):
+
+class PointPillarRAAnetIntermediate(nn.Module):
     def __init__(self, args):
-        super(PointPillarIntermediate, self).__init__()
-
+        super().__init__()
         # PIllar VFE
         self.pillar_vfe = PillarVFE(args['pillar_vfe'],
                                     num_point_features=4,

@@ -251,6 +251,11 @@ def _linear_map(x, range=[-1.0, 1.0]):
 
 
 def _generate_position_info(x):
+    """
+
+    :param x:
+    :return:
+    """
     h, w = x.shape[2], x.shape[3]
 
     lin_h = torch.linspace(0, h - 1, steps=h).cuda()

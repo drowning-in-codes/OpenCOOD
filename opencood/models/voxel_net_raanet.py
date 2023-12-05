@@ -10,16 +10,16 @@ from torch.autograd import Variable
 
 from opencood.models.sub_modules.pillar_vfe import PillarVFE
 from opencood.utils.common_utils import torch_tensor_to_numpy
-
+from opencood.models.sub_modules.raaconv import AttentionConv2D,AttentionConvTranspose2D
 
 # conv2d + bn + relu
-class Conv2d(nn.Module):
+class AttnConv2d(nn.Module):
 
     def __init__(self, in_channels, out_channels, k, s, p, activation=True,
                  batch_norm=True):
-        super(Conv2d, self).__init__()
-        self.conv = nn.Conv2d(in_channels, out_channels, kernel_size=k,
-                              stride=s, padding=p)
+        super(AttnConv2d, self).__init__()
+        self.conv = AttentionConv2D(in_channels, out_channels, k,
+                              s,p)
         if batch_norm:
             self.bn = nn.BatchNorm2d(out_channels)
         else:
@@ -137,23 +137,23 @@ class RPN(nn.Module):
         super(RPN, self).__init__()
         self.anchor_num = anchor_num
 
-        self.block_1 = [Conv2d(128, 128, 3, 2, 1)]
-        self.block_1 += [Conv2d(128, 128, 3, 1, 1) for _ in range(3)]
+        self.block_1 = [AttnConv2d(128, 128, 3, 2, 1)]
+        self.block_1 += [AttnConv2d(128, 128, 3, 1, 1) for _ in range(3)]
         self.block_1 = nn.Sequential(*self.block_1)
 
-        self.block_2 = [Conv2d(128, 128, 3, 2, 1)]
-        self.block_2 += [Conv2d(128, 128, 3, 1, 1) for _ in range(5)]
+        self.block_2 = [AttnConv2d(128, 128, 3, 2, 1)]
+        self.block_2 += [AttnConv2d(128, 128, 3, 1, 1) for _ in range(5)]
         self.block_2 = nn.Sequential(*self.block_2)
 
-        self.block_3 = [Conv2d(128, 256, 3, 2, 1)]
-        self.block_3 += [nn.Conv2d(256, 256, 3, 1, 1) for _ in range(5)]
+        self.block_3 = [AttnConv2d(128, 256, 3, 2, 1)]
+        self.block_3 += [AttnConv2d(256, 256, 3, 1, 1) for _ in range(5)]
         self.block_3 = nn.Sequential(*self.block_3)
 
-        self.deconv_1 = nn.Sequential(nn.ConvTran>spose2d(256, 256, 4, 4, 0),
+        self.deconv_1 = nn.Sequential(AttentionConvTranspose2D(256, 256, 4, 4, 0),
                                       nn.BatchNorm2d(256))
-        self.deconv_2 = nn.Sequential(nn.ConvTranspose2d(128, 256, 2, 2, 0),
+        self.deconv_2 = nn.Sequential(AttentionConvTranspose2D(128, 256, 2, 2, 0),
                                       nn.BatchNorm2d(256))
-        self.deconv_3 = nn.Sequential(nn.ConvTranspose2d(128, 256, 1, 1, 0),
+        self.deconv_3 = nn.Sequential(AttentionConvTranspose2D(128, 256, 1, 1, 0),
                                       nn.BatchNorm2d(256))
 
         self.score_head = Conv2d(768, self.anchor_num, 1, 1, 0,
@@ -174,9 +174,9 @@ class RPN(nn.Module):
         return self.score_head(x), self.reg_head(x)
 
 
-class VoxelNet(nn.Module):
+class VoxelNetRAAnet(nn.Module):
     def __init__(self, args):
-        super(VoxelNet, self).__init__()
+        super(VoxelNetRAAnet, self).__init__()
         self.svfe = PillarVFE(args['pillar_vfe'],
                               num_point_features=4,
                               voxel_size=args['voxel_size'],

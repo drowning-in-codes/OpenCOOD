@@ -7,7 +7,6 @@ from os.path import dirname, realpath
 from setuptools import setup, find_packages, Distribution
 from opencood.version import __version__
 
-
 def _read_requirements_file():
     """Return the elements in requirements.txt."""
     req_file_path = '%s/requirements.txt' % dirname(realpath(__file__))

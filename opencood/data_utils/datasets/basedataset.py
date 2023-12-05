@@ -280,8 +280,8 @@ class BaseDataset(Dataset):
         timestamps = []
 
         for file in yaml_files:
-            res = file.split('/')[-1]
-
+            # delimeter is '/' in Unix and '\\' in Windows
+            res = file.split(f'{os.sep}')[-1]
             timestamp = res.replace('.yaml', '')
             timestamps.append(timestamp)
 
@@ -347,7 +347,7 @@ class BaseDataset(Dataset):
         Calculate the time delay for a certain vehicle.
 
         Parameters
-        ----------
+        -----
         ego_flag : boolean
             Whether the current cav is ego.
 

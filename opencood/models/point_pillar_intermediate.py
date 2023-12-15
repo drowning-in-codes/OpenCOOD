@@ -11,7 +11,6 @@ from opencood.models.sub_modules.pillar_vfe import PillarVFE
 from opencood.models.sub_modules.point_pillar_scatter import PointPillarScatter
 from opencood.models.sub_modules.att_bev_backbone import AttBEVBackbone
 
-
 class PointPillarIntermediate(nn.Module):
     def __init__(self, args):
         super(PointPillarIntermediate, self).__init__()

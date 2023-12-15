@@ -12,7 +12,7 @@ import torch
 import numpy as np
 from torch.autograd import Variable
 
-from opencood.models.voxel_net import RPN, CML
+from opencood.models.voxel_net_raanet import RPN, CML
 from opencood.models.sub_modules.pillar_vfe import PillarVFE
 from opencood.utils.common_utils import torch_tensor_to_numpy
 from opencood.models.fuse_modules.self_attn import AttFusion
@@ -59,9 +59,9 @@ class NaiveFusion(nn.Module):
         return x
 
 
-class VoxelNetIntermediate(nn.Module):
+class VoxelNetRAAnetIntermediate(nn.Module):
     def __init__(self, args):
-        super(VoxelNetIntermediate, self).__init__()
+        super(VoxelNetRAAnetIntermediate, self).__init__()
         self.svfe = PillarVFE(args['pillar_vfe'],
                               num_point_features=4,
                               voxel_size=args['voxel_size'],

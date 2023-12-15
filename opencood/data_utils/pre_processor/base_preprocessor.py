@@ -64,6 +64,7 @@ class BasePreprocessor(object):
             (img_row, img_col).
 
         """
+        # cav_lidar_range: & cav_lidar[-140.8, -40, -3, 140.8, 40, 1]
         L1, W1, H1, L2, W2, H2 = self.params["cav_lidar_range"]
         img_row = int((L2 - L1) / ratio)
         img_col = int((W2 - W1) / ratio)

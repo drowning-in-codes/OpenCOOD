@@ -1,4 +1,4 @@
-name: point_pillar_raanet_intermediate_fusion
+name: point_pillar_intermediate_fusion
 root_dir: "opv2v_data_dumping/train"
 validate_dir: "opv2v_data_dumping/validate"
 

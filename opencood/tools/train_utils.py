@@ -57,7 +57,7 @@ def load_saved_model(saved_path, model):
         checkpoint = torch.load(
             model_file,
             map_location='cpu')
-        model.load_state_dict(checkpoint, strict=True) # set to True to avoid use model incorrectly
+        model.load_state_dict(checkpoint, strict=True)
 
         del checkpoint
 

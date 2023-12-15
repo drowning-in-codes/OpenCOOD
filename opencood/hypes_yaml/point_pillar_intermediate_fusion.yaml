@@ -1,4 +1,4 @@
-name: point_pillar_intermediate_fusion
+name: point_pillar_raanet_intermediate_fusion
 root_dir: "opv2v_data_dumping/train"
 validate_dir: "opv2v_data_dumping/validate"
 
@@ -56,7 +56,7 @@ postprocess:
 
 # model related
 model:
-  core_method: point_pillar_intermediate
+  core_method: point_pillar_raanet_intermediate
   args:
     voxel_size: *voxel_size
     lidar_range: *cav_lidar

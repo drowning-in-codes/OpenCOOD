@@ -56,7 +56,7 @@ postprocess:
 
 # model related
 model:
-  core_method: voxel_raanet_net_intermediate # corresponding to VoxelNet
+  core_method: voxel_net_raanet_intermediate # corresponding to VoxelNet
   args:
     N: *batch_size
     T: *T

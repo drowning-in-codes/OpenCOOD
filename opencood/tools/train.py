@@ -182,7 +182,7 @@ def main():
             torch.save(model_without_ddp.state_dict(),
                 os.path.join(saved_path, 'net_epoch%d.pth' % (epoch + 1)))
 
-        if epoch % hypes['train_params']['eval_freq'] == 0:
+        if (epoch+1) % hypes['train_params']['eval_freq'] == 0:
             valid_ave_loss = []
 
             with torch.no_grad():

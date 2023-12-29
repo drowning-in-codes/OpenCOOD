@@ -6,9 +6,11 @@
 import argparse
 import os
 import statistics
+from types import SimpleNamespace
 
 import torch
 import tqdm
+import wandb
 from tensorboardX import SummaryWriter
 from torch.utils.data import DataLoader, DistributedSampler
 
@@ -17,7 +19,7 @@ from opencood.tools import train_utils
 from opencood.tools import multi_gpu_utils
 from opencood.data_utils.datasets import build_dataset
 from opencood.tools import train_utils
-
+from opencood import __PROJECT__
 
 def train_parser():
     parser = argparse.ArgumentParser(description="synthetic data generation")
@@ -120,6 +122,8 @@ def main():
     if opt.half:
         scaler = torch.cuda.amp.GradScaler()
 
+    # init wandb
+    run = wandb.init(project=__PROJECT__,config=opt,job_type="train")
     print('Training start')
     epoches = hypes['train_params']['epoches']
     # used to help schedule learning rate
@@ -163,7 +167,7 @@ def main():
                     final_loss = criterion(ouput_dict,
                                            batch_data['ego']['label_dict'])
 
-
+            run.log({"train/final_loss":final_loss,"train/epoch":epoch})
             criterion.logging(epoch, i, len(train_loader), writer, pbar=pbar2)
             pbar2.update(1)
 
@@ -196,6 +200,7 @@ def main():
                                            batch_data['ego']['label_dict'])
                     valid_ave_loss.append(final_loss.item())
             valid_ave_loss = statistics.mean(valid_ave_loss)
+            run.log({"train/final_loss":valid_ave_loss,"train/epoch":epoch})
             print('At epoch %d, the validation loss is %f' % (epoch,
                                                               valid_ave_loss))
             writer.add_scalar('Validate_Loss', valid_ave_loss, epoch)

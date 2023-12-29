@@ -152,7 +152,7 @@ def calculate_ap(result_stat, iou, global_sort_detections):
     return ap, mrec, mprec
 
 
-def eval_final_results(result_stat, save_path, global_sort_detections):
+def eval_final_results(result_stat, save_path, global_sort_detections,run):
     dump_dict = {}
 
     ap_30, mrec_30, mpre_30 = calculate_ap(result_stat, 0.30, global_sort_detections)
@@ -167,10 +167,9 @@ def eval_final_results(result_stat, save_path, global_sort_detections):
                       'mpre_70': mpre_70,
                       'mrec_70': mrec_70,
                       })
-    
     output_file = 'eval.yaml' if not global_sort_detections else 'eval_global_sort.yaml'
     yaml_utils.save_yaml(dump_dict, os.path.join(save_path, output_file))
-
+    run.log({"test/ap@30":ap_30,"test/ap@70":ap_70,"test/ap@70":ap_70})
     print('The Average Precision at IOU 0.3 is %.2f, '
           'The Average Precision at IOU 0.5 is %.2f, '
           'The Average Precision at IOU 0.7 is %.2f' % (ap_30, ap_50, ap_70))

@@ -244,7 +244,7 @@ def setup_lr_schedular(hypes, optimizer, n_iter_per_epoch):
         scheduler = CosineLRScheduler(
             optimizer,
             t_initial=num_steps,
-            lr_min=lr_min,
+            lr_min=lr_min if lr_min else 1e-5,
             warmup_lr_init=warmup_lr,
             warmup_t=warmup_steps,
             cycle_limit=1,

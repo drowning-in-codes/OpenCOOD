@@ -11,14 +11,14 @@ from tqdm import tqdm
 import torch
 import open3d as o3d
 from torch.utils.data import DataLoader
-
+import wandb
 import opencood.hypes_yaml.yaml_utils as yaml_utils
 from opencood.tools import train_utils, inference_utils
 from opencood.data_utils.datasets import build_dataset
 from opencood.utils import eval_utils
 from opencood.visualization import vis_utils
 import matplotlib.pyplot as plt
-
+from opencood import __PROJECT__
 
 def test_parser():
     parser = argparse.ArgumentParser(description="synthetic data generation")
@@ -51,15 +51,15 @@ def main():
     assert not (opt.show_vis and opt.show_sequence), 'you can only visualize ' \
                                                     'the results in single ' \
                                                     'image mode or video mode'
-
     hypes = yaml_utils.load_yaml(None, opt)
-
+    # init wandb
+    run = wandb.init(project=__PROJECT__,config=opt,job_type="test")
     print('Dataset Building')
     opencood_dataset = build_dataset(hypes, visualize=True, train=False)
     print(f"{len(opencood_dataset)} samples found.")
     data_loader = DataLoader(opencood_dataset,
                              batch_size=1,
-                             num_workers=0,
+                             num_workers=16,
                              collate_fn=opencood_dataset.collate_batch_test,
                              shuffle=False,
                              pin_memory=False,
@@ -199,7 +199,7 @@ def main():
 
     eval_utils.eval_final_results(result_stat,
                                   opt.model_dir,
-                                  opt.global_sort_detections)
+                                  opt.global_sort_detections,run)
     if opt.show_sequence:
         vis.destroy_window()
 

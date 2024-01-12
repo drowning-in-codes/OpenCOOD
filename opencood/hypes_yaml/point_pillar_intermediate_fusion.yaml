@@ -5,9 +5,9 @@ validate_dir: "opv2v_data_dumping/validate"
 yaml_parser: "load_point_pillar_params"
 train_params:
   batch_size: &batch_size 2
-  epoches: 15
-  eval_freq: 10
-  save_freq: 1
+  epoches: 35
+  eval_freq: 100
+  save_freq: 10
 
 fusion:
   core_method: 'IntermediateFusionDataset' # LateFusionDataset, EarlyFusionDataset, IntermediateFusionDataset supported

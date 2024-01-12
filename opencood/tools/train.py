@@ -19,7 +19,7 @@ from opencood.tools import train_utils
 from opencood.tools import multi_gpu_utils
 from opencood.data_utils.datasets import build_dataset
 from opencood.tools import train_utils
-from opencood import __PROJECT__
+from opencood.version import __PROJECT__
 
 def train_parser():
     parser = argparse.ArgumentParser(description="synthetic data generation")
@@ -182,7 +182,7 @@ def main():
             if hypes['lr_scheduler']['core_method'] == 'cosineannealwarm':
                 scheduler.step_update(epoch * num_steps + i)
 
-        if epoch % hypes['train_params']['save_freq'] == 0:
+        if (epoch+1) % hypes['train_params']['save_freq'] == 0:
             torch.save(model_without_ddp.state_dict(),
                 os.path.join(saved_path, 'net_epoch%d.pth' % (epoch + 1)))
 

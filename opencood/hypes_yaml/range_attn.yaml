@@ -1,13 +1,13 @@
-name: point_pillar_fcooper
+name: point_pillar_raanet_fcooper
 root_dir: 'opv2v_data_dumping/train'
-validate_dir: 'opv2v_data_dumping/validate'
+validate_dir: 'opv2v_data_dumping/validate' # should change it to test during inference
 
 yaml_parser: "load_point_pillar_params"
 train_params:
   batch_size: &batch_size 2
   epoches: 35
   eval_freq: 100
-  save_freq: 10
+  save_freq: 15
   max_cav: &max_cav 5
 
 fusion:
@@ -57,7 +57,7 @@ postprocess:
 
 # model related
 model:
-  core_method: point_pillar_fcooper
+  core_method: point_pillar_raanet_raafusion
   args:
     voxel_size: *voxel_size
     lidar_range: *cav_lidar
@@ -74,7 +74,7 @@ model:
     point_pillar_scatter:
       num_features: 64
 
-    base_bev_backbone:
+    raa_fusion:
       layer_nums: [3, 5, 8]
       layer_strides: [2, 2, 2]
       num_filters: [64, 128, 256]
@@ -104,4 +104,9 @@ lr_scheduler:
   core_method: multistep #step, multistep and Exponential support
   gamma: 0.1
   step_size: [10, 15]
+  # core_method: cosineannealwarm #step, multistep and Exponential support
+  # epoches: 30
+  # warmup_lr: 1e-4  
+  # warmup_epoches: 10
+  # lr_min: 1e-5
 

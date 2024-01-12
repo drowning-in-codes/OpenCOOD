@@ -18,7 +18,7 @@ from opencood.data_utils.datasets import build_dataset
 from opencood.utils import eval_utils
 from opencood.visualization import vis_utils
 import matplotlib.pyplot as plt
-from opencood import __PROJECT__
+from opencood.version import __PROJECT__
 
 def test_parser():
     parser = argparse.ArgumentParser(description="synthetic data generation")

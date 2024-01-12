@@ -7,7 +7,7 @@ train_params:
   batch_size: &batch_size 2
   epoches: 35
   eval_freq: 100
-  save_freq: 1
+  save_freq: 15
   max_cav: &max_cav 5
 
 fusion:
@@ -101,9 +101,12 @@ optimizer:
     weight_decay: 1e-4
 
 lr_scheduler:
-  core_method: cosineannealwarm #step, multistep and Exponential support
-  epoches: 30
-  warmup_lr: 1e-4  
-  warmup_epoches: 10
-  lr_min: 1e-5
+  core_method: multistep #step, multistep and Exponential support
+  gamma: 0.1
+  step_size: [10, 15]
+  # core_method: cosineannealwarm #step, multistep and Exponential support
+  # epoches: 30
+  # warmup_lr: 1e-4  
+  # warmup_epoches: 10
+  # lr_min: 1e-5
 

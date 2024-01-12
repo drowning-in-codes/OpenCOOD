@@ -1,6 +1,7 @@
+# compression and denoise model
+#
 import torch
 import torch.nn as nn
-
 
 class AutoEncoder(nn.Module):
     def __init__(self, feature_num, layer_num):

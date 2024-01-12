@@ -57,7 +57,7 @@ postprocess:
 
 # model related
 model:
-  core_method: point_pillar_raanet_raafusion
+  core_method: point_pillar_range_fusion
   args:
     voxel_size: *voxel_size
     lidar_range: *cav_lidar

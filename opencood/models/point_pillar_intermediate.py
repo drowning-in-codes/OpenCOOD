@@ -45,10 +45,9 @@ class PointPillarIntermediate(nn.Module):
         batch_dict = self.backbone(batch_dict)
 
         spatial_features_2d = batch_dict['spatial_features_2d']
-
+        
         psm = self.cls_head(spatial_features_2d)
         rm = self.reg_head(spatial_features_2d)
-
         output_dict = {'psm': psm,
                        'rm': rm}
 

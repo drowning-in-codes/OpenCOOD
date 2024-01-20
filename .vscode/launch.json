@@ -5,12 +5,40 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Python: 当前文件",
+            "name": "multi_gpu_train",
             "type": "python",
             "request": "launch",
-            "program": "${file}",
+            "program": "./opencood/tools/train.py",
             "console": "integratedTerminal",
-            "justMyCode": true,
+            "justMyCode": false,
+            "args":["-m","torch.distributed.launch","--nproc_per_node=2","--use_env","opencood/tools/train.py",
+                    "--hypes_yaml","./opencood/hypes_yaml/point_pillar_range_fusion_v3.yaml"],
+            "env": {
+                "DISPLAY":"192.168.0.109:0.0"
+            }
+        },
+        {
+            "name": "inference",
+            "type": "python",
+            "request": "launch",
+            "program": "./opencood/tools/inference.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args":["--model_dir","./opencood/logs/point_pillar_range_fusion_2024_01_15_13_37_30",
+                    "--fusion_method","intermediate"],
+            "env": {
+                "DISPLAY":"192.168.0.109:0.0"
+            }
+        },
+        {
+            "name": "train",
+            "type": "python",
+            "request": "launch",
+            "program": "./opencood/tools/train.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args":["--hypes_yaml","./opencood/hypes_yaml/point_pillar_range_fusion_v3.yaml",
+                    ],
             "env": {
                 "DISPLAY":"192.168.0.109:0.0"
             }

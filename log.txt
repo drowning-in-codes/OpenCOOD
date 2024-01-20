@@ -1,0 +1,46 @@
+Not using distributed mode
+-----------------Dataset Building------------------
+too many cavs
+---------------Creating Model------------------
+optimizer method is: <class 'torch.optim.adam.Adam'>
+Training start
+learning rate 0.0010000
+
+| distributed init (rank 0): env://
+Not using distributed mode
+-----------------Dataset Building------------------
+too many cavs
+---------------Creating Model------------------
+optimizer method is: <class 'torch.optim.adam.Adam'>
+Training start
+learning rate 0.0010000
+learning rate 0.0010000
+learning rate 0.0010000
+learning rate 0.0010000
+learning rate 0.0010000
+learning rate 0.0010000
+learning rate 0.0010000
+learning rate 0.0010000
+learning rate 0.0010000
+learning rate 0.0010000
+learning rate 0.0001000
+learning rate 0.0001000
+learning rate 0.0001000
+learning rate 0.0001000
+learning rate 0.0001000
+learning rate 0.0000100
+learning rate 0.0000100
+learning rate 0.0000100
+learning rate 0.0000100
+learning rate 0.0000100
+learning rate 0.0000100
+learning rate 0.0000100
+learning rate 0.0000100
+learning rate 0.0000100
+learning rate 0.0000100
+learning rate 0.0000100
+learning rate 0.0000100
+learning rate 0.0000100
+learning rate 0.0000100
+learning rate 0.0000100
+Training Finished, checkpoints saved to /root/OpenCOOD/opencood/tools/../logs/point_pillar_range_fusion_2024_01_18_17_31_13

@@ -1,13 +1,14 @@
 # -*- coding: utf-8 -*-
-# Author: Runsheng Xu <rxx3386@ucla.edu>
+# Modified by proanimer 
+# OriginaL Author: Runsheng Xu <rxx3386@ucla.edu>
 # License: TDG-Attribution-NonCommercial-NoDistrib
-
 
 import argparse
 import os
+import datetime
 import statistics
 from types import SimpleNamespace
-
+import logging
 import torch
 import tqdm
 import wandb
@@ -34,8 +35,24 @@ def train_parser():
     opt = parser.parse_args()
     return opt
 
+def create_logger(log_file):
+    # 创建一个logger
+    logger = logging.getLogger('training_logger')
+    logger.setLevel(logging.INFO)
+    # 创建一个文件处理器，并将日志输出到文件
+    file_handler = logging.FileHandler(log_file)
+    file_handler.setLevel(logging.INFO)
+    # 创建一个格式化器
+    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+    # 将格式化器添加到文件处理器
+    file_handler.setFormatter(formatter)
+    # 将文件处理器添加到logger
+    logger.addHandler(file_handler)
+
+    return logger
 
 def main():
+    logger = create_logger('training.log')
     opt = train_parser()
     hypes = yaml_utils.load_yaml(opt.hypes_yaml, opt)
 
@@ -123,12 +140,13 @@ def main():
         scaler = torch.cuda.amp.GradScaler()
 
     # init wandb
-    run = wandb.init(project=__PROJECT__,config=opt,job_type="train")
-    print('Training start')
+    # run = wandb.init(project=__PROJECT__,config=opt,job_type="train")
+    logger.info(f"{opt['hypes_yaml']} Training start {opt['model_dir'] if opt['model_dir'] else ''} \n")
     epoches = hypes['train_params']['epoches']
     # used to help schedule learning rate
-
     for epoch in range(init_epoch, max(epoches, init_epoch)):
+        avg_loss = []
+        start_time = datetime.datetime.now()
         if hypes['lr_scheduler']['core_method'] != 'cosineannealwarm':
             scheduler.step(epoch)
         if hypes['lr_scheduler']['core_method'] == 'cosineannealwarm':
@@ -166,8 +184,8 @@ def main():
                     ouput_dict = model(batch_data['ego'])
                     final_loss = criterion(ouput_dict,
                                            batch_data['ego']['label_dict'])
-
-            run.log({"train/final_loss":final_loss,"train/epoch":epoch})
+            avg_loss.append(final_loss.detach().cpu().numpy())
+            # run.log({"train/final_loss":final_loss,"train/epoch":epoch})
             criterion.logging(epoch, i, len(train_loader), writer, pbar=pbar2)
             pbar2.update(1)
 
@@ -181,6 +199,11 @@ def main():
 
             if hypes['lr_scheduler']['core_method'] == 'cosineannealwarm':
                 scheduler.step_update(epoch * num_steps + i)
+
+        # logger info
+        end_time = datetime.datetime.now()
+        training_time = end_time - start_time
+        logger.info(f'Epoch: {epoch}, Learning Rate: {param_group["lr"]},Training time: {training_time},Loss: {mean(avg_loss)}\n')
 
         if (epoch+1) % hypes['train_params']['save_freq'] == 0:
             torch.save(model_without_ddp.state_dict(),
@@ -200,12 +223,14 @@ def main():
                                            batch_data['ego']['label_dict'])
                     valid_ave_loss.append(final_loss.item())
             valid_ave_loss = statistics.mean(valid_ave_loss)
-            run.log({"train/final_loss":valid_ave_loss,"train/epoch":epoch})
+            # run.log({"train/final_loss":valid_ave_loss,"train/epoch":epoch})
             print('At epoch %d, the validation loss is %f' % (epoch,
                                                               valid_ave_loss))
             writer.add_scalar('Validate_Loss', valid_ave_loss, epoch)
 
     print('Training Finished, checkpoints saved to %s' % saved_path)
+
+    logger.info(f"{opt['hypes_yaml']} Training finish {opt['model_dir'] if opt['model_dir'] else ''} \n")
 
 
 if __name__ == '__main__':

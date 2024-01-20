@@ -53,7 +53,7 @@ def main():
                                                     'image mode or video mode'
     hypes = yaml_utils.load_yaml(None, opt)
     # init wandb
-    run = wandb.init(project=__PROJECT__,config=opt,job_type="test")
+    # run = wandb.init(project=__PROJECT__,config=opt,job_type="test")
     print('Dataset Building')
     opencood_dataset = build_dataset(hypes, visualize=True, train=False)
     print(f"{len(opencood_dataset)} samples found.")
@@ -74,7 +74,7 @@ def main():
 
     print('Loading Model from checkpoint')
     saved_path = opt.model_dir
-    _, model = train_utils.load_saved_model(saved_path, model)
+    epoch, model = train_utils.load_saved_model(saved_path, model)
     model.eval()
 
     # Create the dictionary for evaluation.
@@ -199,7 +199,7 @@ def main():
 
     eval_utils.eval_final_results(result_stat,
                                   opt.model_dir,
-                                  opt.global_sort_detections,run)
+                                  opt.global_sort_detections,epoch)
     if opt.show_sequence:
         vis.destroy_window()
 

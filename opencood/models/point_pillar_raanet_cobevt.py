@@ -1,24 +1,20 @@
-# -*- coding: utf-8 -*-
-# Author: Runsheng Xu <rxx3386@ucla.edu>
-# License: TDG-Attribution-NonCommercial-NoDistrib
-
-
+import torch
 import torch.nn as nn
+from einops import rearrange, repeat
 
 from opencood.models.sub_modules.pillar_vfe import PillarVFE
 from opencood.models.sub_modules.point_pillar_scatter import PointPillarScatter
 from opencood.models.sub_modules.base_raa_bev_backbone import BaseRAABEVBackbone
 from opencood.models.sub_modules.downsample_conv import DownsampleConv
 from opencood.models.sub_modules.naive_compress import NaiveCompressor
-from opencood.models.fuse_modules.f_cooper_fuse import SpatialFusion
+from opencood.models.fuse_modules.swap_fusion_modules import \
+    SwapFusionEncoder
+from opencood.models.fuse_modules.fuse_utils import regroup
 
 
-class PointPillarRAANetFCooper(nn.Module):
-    """
-    F-Cooper implementation with point pillar backbone.
-    """
+class PointPillarRAAnetCoBEVT(nn.Module):
     def __init__(self, args):
-        super(PointPillarRAANetFCooper, self).__init__()
+        super().__init__()
 
         self.max_cav = args['max_cav']
         # PIllar VFE
@@ -39,7 +35,7 @@ class PointPillarRAANetFCooper(nn.Module):
             self.compression = True
             self.naive_compressor = NaiveCompressor(256, args['compression'])
 
-        self.fusion_net = SpatialFusion()
+        self.fusion_net = SwapFusionEncoder(args['fax_fusion'])
 
         self.cls_head = nn.Conv2d(128 * 2, args['anchor_number'],
                                   kernel_size=1)
@@ -79,6 +75,7 @@ class PointPillarRAANetFCooper(nn.Module):
         voxel_coords = data_dict['processed_lidar']['voxel_coords']
         voxel_num_points = data_dict['processed_lidar']['voxel_num_points']
         record_len = data_dict['record_len']
+        spatial_correction_matrix = data_dict['spatial_correction_matrix']
 
         batch_dict = {'voxel_features': voxel_features,
                       'voxel_coords': voxel_coords,
@@ -98,7 +95,17 @@ class PointPillarRAANetFCooper(nn.Module):
         if self.compression:
             spatial_features_2d = self.naive_compressor(spatial_features_2d)
 
-        fused_feature = self.fusion_net(spatial_features_2d, record_len)
+        # N, C, H, W -> B,  L, C, H, W
+        regroup_feature, mask = regroup(spatial_features_2d,
+                                        record_len,
+                                        self.max_cav)
+        com_mask = mask.unsqueeze(1).unsqueeze(2).unsqueeze(3)
+        com_mask = repeat(com_mask,
+                          'b h w c l -> b (h new_h) (w new_w) c l',
+                          new_h=regroup_feature.shape[3],
+                          new_w=regroup_feature.shape[4])
+
+        fused_feature = self.fusion_net(regroup_feature, com_mask)
 
         psm = self.cls_head(fused_feature)
         rm = self.reg_head(fused_feature)

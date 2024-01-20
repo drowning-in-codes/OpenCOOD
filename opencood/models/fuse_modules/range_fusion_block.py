@@ -11,8 +11,9 @@ class RangeAttentionBlock(nn.Module):
         super().__init__()
         self.agent_att = AgentAttention(input_dim)
         self.local_att = LocalAttention(input_dim)
-        self.conv1x1 = nn.Conv2d(input_dim, input_dim, kernel_size=1, bias=True)
-        # self.conv3x3 = nn.Conv2d(input_dim, input_dim, kernel_size=3, padding=1, bias=False)
+        self.conv1x1 = nn.Conv2d(input_dim*2, input_dim, kernel_size=1, bias=True)
+        # self.convattn = nn.AdaptiveAvgPool2d
+        self.convattn =  nn.Conv2d(input_dim*2, input_dim, kernel_size=1, bias=False)
 
     @staticmethod
     def regroup(x, record_len):
@@ -21,24 +22,38 @@ class RangeAttentionBlock(nn.Module):
         return split_x
 
     def forward(self, spatial_features, record_len):
-        split_x = self.regroup(spatial_features, record_len)
+        assert spatial_features.ndim == 4, "tensor dim not correct"
+        split_x = self.regroup(spatial_features, record_len) #spatial_features [5,C,H,W]
         out = []
         # att = []
-        for batch_spatial_feature in split_x:
+        for batch_spatial_feature in split_x: # [2,C,H,W]
             """
             combine agent and local attention
             """
-            agent_feature = self.agent_att(spatial_features)
-            local_feature = self.local_att(batch_spatial_feature[0].unsqueeze(0))
-            local_feature = self.conv1x1(local_feature)
-            ego_feature = torch.cat([agent_feature, local_feature], dim=1)
-            out.append(ego_feature)
-        out = torch.cat(out)
+            local_feat = []
+            agent_feature = self.agent_att(batch_spatial_feature) # [V,C,H,W] V is sum of cavs in the scene which can be detected
+            for vehicle_feature in batch_spatial_feature: # [C,H,W]
+                local_feature = self.local_att(vehicle_feature.unsqueeze(0)) # [1,2C,H,W]
+                local_feature = self.conv1x1(local_feature) 
+                local_feat.append(local_feature)
+            local_feat = torch.cat(local_feat,dim=0)  # [V,C,H,W]
+            ego_feature = local_feat+agent_feature # [V,C,H,W]
+            # ego_feature = self.conv3x3(ego_feature)
+
+            out_mean = torch.mean(ego_feature,dim=0,keepdim=True) # [1,C,H,W]
+            out_max = torch.max(ego_feature,dim=0,keepdim=True)[0] # [1,C,H,W]
+            # out_ada = self.convattn(ego_feature) # [1,C,H,W]
+
+            agg_feat = torch.cat([out_mean,out_max],dim=1) # [1,2C,H,W]
+            out_feature = self.convattn(agg_feat) # [1,C,H,W]
+            out.append(out_feature)
+
+        out = torch.cat(out,dim=0) 
         return out
 
 
 class AgentAttention(nn.Module):
-    def __init__(self, input_dim, reduction=16):
+    def __init__(self, input_dim, reduction=4):
         super().__init__()
         self.avg_pool = nn.AdaptiveAvgPool2d(1)
         self.fc = nn.Sequential(
@@ -60,10 +75,13 @@ class AgentAttention(nn.Module):
         """
         agent-wise attention
         """
-        # !TODO implement agent-wise attention
         att_vehicle = self.avg_pool(batch_spatial_feature).squeeze()
+        if att_vehicle.ndim == 1:
+            att_vehicle = att_vehicle.unsqueeze(0)
         att_vehicle = self.fc(att_vehicle).reshape(att_vehicle.shape[0], att_vehicle.shape[1], 1, 1)
+        # identity = att_vehicle
         att_vehicle = att_vehicle * batch_spatial_feature
+        # att_vehicle = identity + batch_spatial_feature
         att_vehicle = att_vehicle + batch_spatial_feature
         fuse_att = self.conv1x1(att_vehicle)
         pooling_max = torch.max(fuse_att, dim=0, keepdim=True)[0]
@@ -75,7 +93,6 @@ class AgentAttention(nn.Module):
     def regroup(self, x, record_len):
         cum_sum_len = torch.cumsum(record_len, dim=0)
         split_x = torch.tensor_split(x, cum_sum_len[:-1].cpu())
-
         return split_x
 
 
@@ -128,19 +145,20 @@ class CoordinateAttention(nn.Module):
         a_h = self.conv_h(x_h).sigmoid()
         a_w = self.conv_w(x_w).sigmoid()
         out = identity * a_w * a_h
+        # out = out+identity
         return out
 
 
 class LocalRangeAttention(nn.Module):
-    def __init__(self, input_dim):
+    def __init__(self, input_dim,scale:float=1):
         super().__init__()
         self.conv1x1 = nn.Conv2d(input_dim, input_dim, kernel_size=1, bias=True)
         self.conv3x3 = nn.Conv2d(input_dim + 2, 1, kernel_size=3, padding=1, bias=False)
         self.conv2 = nn.Conv2d(4, 1, kernel_size=3, padding=1, bias=False)
         self.sigmoid = nn.Sigmoid()
         self.norm = nn.LayerNorm(input_dim)
-        self.lam = nn.Parameter(torch.zeros(1))
-
+        self.lam = nn.Parameter(torch.zeros(scale))
+        # self.lam = nn.Parameter(torch.tensor(scale,dtype=torch.float32))
     def forward(self, spatial_features):
         grid_h_batch, grid_w_batch, distance_tensor, = self.range_map(spatial_features)
         feature_out = self.conv1x1(spatial_features)
@@ -195,4 +213,13 @@ class LocalAttention(nn.Module):
         coord_out = self.ca(spatial_features)
         lra_out = self.lra(spatial_features)
         out = torch.cat([lra_out, coord_out], dim=1)
+
+        # out = lra_out+coord_out
+        # out = torch.sigmoid(out)
+
+        # coord_out = self.ca(spatial_features)
+        # coord_out = coord_out * spatial_features
+        # lra_out = self.lra(coord_out)
+        # lra_out = lra_out * spatial_features
+        # out = spatial_features + lra_out
         return out

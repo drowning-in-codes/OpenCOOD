@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
-# Author: Runsheng Xu <rxx3386@ucla.edu>
+# Author: Qiuhao shu 
 # License: TDG-Attribution-NonCommercial-NoDistrib
-
 
 import torch.nn as nn
 
@@ -10,15 +9,15 @@ from opencood.models.sub_modules.point_pillar_scatter import PointPillarScatter
 from opencood.models.sub_modules.base_raa_bev_backbone import BaseRAABEVBackbone
 from opencood.models.sub_modules.downsample_conv import DownsampleConv
 from opencood.models.sub_modules.naive_compress import NaiveCompressor
-from opencood.models.fuse_modules.f_cooper_fuse import SpatialFusion
+from opencood.models.fuse_modules.range_attn_fusion import RangeAttentionFusion
 
 
-class PointPillarRAANetFCooper(nn.Module):
+class PointPillarRangeFusion(nn.Module):
     """
-    F-Cooper implementation with point pillar backbone.
+    Range-aware implementation with point pillar backbone.
     """
     def __init__(self, args):
-        super(PointPillarRAANetFCooper, self).__init__()
+        super(PointPillarRangeFusion, self).__init__()
 
         self.max_cav = args['max_cav']
         # PIllar VFE
@@ -38,13 +37,15 @@ class PointPillarRAANetFCooper(nn.Module):
         if args['compression'] > 0:
             self.compression = True
             self.naive_compressor = NaiveCompressor(256, args['compression'])
+        
+        output_fusion_feature_dim = sum(args["raa_fusion"]['num_upsample_filter'])
+        self.fusion_net = RangeAttentionFusion(args['raa_fusion'],256)
 
-        self.fusion_net = SpatialFusion()
+        self.cls_head = nn.Conv2d(output_fusion_feature_dim, args['anchor_number'],
+                                  kernel_size=1)
+        self.reg_head = nn.Conv2d(output_fusion_feature_dim, 7 * args['anchor_number'],
+                                  kernel_size=1)
 
-        self.cls_head = nn.Conv2d(128 * 2, args['anchor_number'],
-                                  kernel_size=1)
-        self.reg_head = nn.Conv2d(128 * 2, 7 * args['anchor_number'],
-                                  kernel_size=1)
 
         if args['backbone_fix']:
             self.backbone_fix()
@@ -98,11 +99,10 @@ class PointPillarRAANetFCooper(nn.Module):
         if self.compression:
             spatial_features_2d = self.naive_compressor(spatial_features_2d)
 
-        fused_feature = self.fusion_net(spatial_features_2d, record_len)
-
+        fused_feature = self.fusion_net(spatial_features_2d,record_len)
+        batch_dict['spatial_features_2d'] = fused_feature
         psm = self.cls_head(fused_feature)
         rm = self.reg_head(fused_feature)
-
         output_dict = {'psm': psm,
                        'rm': rm}
 

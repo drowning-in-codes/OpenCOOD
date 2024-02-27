@@ -67,6 +67,8 @@ def main():
 
     print('Creating Model')
     model = train_utils.create_model(hypes)
+    # Enable traing False
+    model.__setattr__("training", False)
     # we assume gpu is necessary
     if torch.cuda.is_available():
         model.cuda()

@@ -1,22 +1,28 @@
+# Author: proanimer
+# Email: <bukalala174@gmail.com>
+# License: MIT
+
+
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-import numpy as np
-from opencood.models.fuse_modules.denoiseModel import AutoEncoder, DenoiseModel
+from opencood.models.sub_modules.denoiseModel import AutoEncoder, DenoiseModel
 from opencood.models.fuse_modules.range_fusion_block import RangeAttentionBlock
+import numpy as np
+import os
 
-# goals : combine local and global attention,multiscale attention,distance(range) encoding
 
 class RangeAttentionFusion(nn.Module):
-    def __init__(self, model_cfg: dict,input_dim: int,feature_len: int = 3):
+    def __init__(self, model_cfg, input_channels):
         super().__init__()
         self.model_cfg = model_cfg
         self.compress = False
+
         if 'compression' in model_cfg and model_cfg['compression'] > 0:
             self.compress = True
             self.compress_layer = model_cfg['compression']
 
         if 'layer_nums' in self.model_cfg:
+
             assert len(self.model_cfg['layer_nums']) == \
                    len(self.model_cfg['layer_strides']) == \
                    len(self.model_cfg['num_filters'])
@@ -38,19 +44,7 @@ class RangeAttentionFusion(nn.Module):
             upsample_strides = num_upsample_filters = []
 
         num_levels = len(layer_nums)
-
-        # feature_pyramid for multi-scale
-        if "feature_pyramid" in self.model_cfg:
-            self.feature_pyramid = self.model_cfg["feature_pyramid"]
-        else:
-            self.feature_pyramid = True
-
-        if self.feature_pyramid :
-            self.feature_len = feature_len
-            for idx in range(min(num_levels,feature_len)):
-                self.__setattr__(f"smooth_{idx}",nn.Conv2d(num_upsample_filters[idx], num_upsample_filters[idx], kernel_size=1, bias=True))
-       
-        c_in_list = [input_dim, *num_filters[:-1]]
+        c_in_list = [input_channels, *num_filters[:-1]]
 
         self.blocks = nn.ModuleList()
         self.fuse_modules = nn.ModuleList()
@@ -69,12 +63,11 @@ class RangeAttentionFusion(nn.Module):
                 nn.BatchNorm2d(num_filters[idx], eps=1e-3, momentum=0.01),
                 nn.ReLU()
             ]
-
             fuse_network = RangeAttentionBlock(num_filters[idx])
             self.fuse_modules.append(fuse_network)
             if self.compress and self.compress_layer - idx > 0:
                 self.compression_modules.append(AutoEncoder(num_filters[idx],
-                                                            self.compress_layer - idx))
+                                                            self.compress_layer-idx))
 
             for k in range(layer_nums[idx]):
                 cur_layers.extend([
@@ -85,7 +78,6 @@ class RangeAttentionFusion(nn.Module):
                 ])
 
             self.blocks.append(nn.Sequential(*cur_layers))
-
             if len(upsample_strides) > 0:
                 stride = upsample_strides[idx]
                 if stride >= 1:
@@ -124,61 +116,27 @@ class RangeAttentionFusion(nn.Module):
         self.num_bev_features = c_in
 
     def forward(self, spatial_features,record_len):
+
         ups = []
         ret_dict = {}
         x = spatial_features
-        fuse_x_list = []
         for i in range(len(self.blocks)):
             x = self.blocks[i](x)
             if self.compress and i < len(self.compression_modules):
                 x = self.compression_modules[i](x)
             x_fuse = self.fuse_modules[i](x, record_len)
-            fuse_x_list.append(x_fuse)
             stride = int(spatial_features.shape[2] / x.shape[2])
             ret_dict['spatial_features_%dx' % stride] = x
-            
-        if len(self.deblocks) > 0:
-            for i in range(len(self.deblocks)-1,-1,-1):
-                    if self.feature_pyramid:
-                        if i == len(self.deblocks)-1:
-                            tmp = self.deblocks[i](fuse_x_list[i])
-                            ups.append(tmp)
-                        else:
-                            last_decode_feature = ups[-1]
-                            decode_out = self.deblocks[i](fuse_x_list[i])
-                            _,_,h,w = decode_out.shape
-                            if h != last_decode_feature.shape[-2] or w != last_decode_feature.shape[-1]:
-                                ups[-1] =  F.interpolate(last_decode_feature,size=(h,w),mode="bilinear")
-                            decode_out = ups[-1]+decode_out
-                            ups.append(decode_out)
-                    else:
-                        if i == len(self.deblocks)-1:
-                            tmp = self.deblocks[i](fuse_x_list[i])
-                            ups.append(tmp)
-                        else:
-                            last_decode_feature = ups[-1]
-                            decode_out = self.deblocks[i](fuse_x_list[i])
-                            _,_,h,w = decode_out.shape
-                            if h != last_decode_feature.shape[-2] or w != last_decode_feature.shape[-1]:
-                                ups[-1] =  F.interpolate(last_decode_feature,size=(h,w),mode="bilinear")
-                            # decode_out = ups[-1]+decode_out
-                            ups.append(decode_out)
-                        # ups.append(self.deblocks[i](fuse_x_list[i]))
-        else:
-            ups = fuse_x_list
+
+            if len(self.deblocks) > 0:
+                ups.append(self.deblocks[i](x_fuse))
+            else:
+                ups.append(x_fuse)
 
         if len(ups) > 1:
-            if self.feature_pyramid:
-                for idx in range(min(self.feature_len,len(self.blocks))):
-                    ups[idx] = self.__getattr__(f"smooth_{idx}")(ups[idx])
-                x = torch.cat(ups, dim=1)
-            else:
-                x = torch.cat(ups, dim=1)
+            x = torch.cat(ups, dim=1)
         elif len(ups) == 1:
             x = ups[0]
-
         if len(self.deblocks) > len(self.blocks):
             x = self.deblocks[-1](x)
-
-        return x
-
+        return  x

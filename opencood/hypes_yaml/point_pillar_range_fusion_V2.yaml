@@ -18,12 +18,26 @@ loss:
     cls_weight: 1.0
     reg: 2.0
   core_method: point_pillar_loss
+train_params:
+  batch_size: 3
+  epoches: &epoches 30
+  eval_freq: 100
+  max_cav: 5
+  save_freq: 10
+
 lr_scheduler:
-  core_method: multistep
-  gamma: 0.1
-  step_size:
-  - 10
-  - 15
+    core_method: cosineannealwarm #step, multistep, Exponential and cosineannealwarm support
+    epoches: *epoches
+    warmup_lr: 2e-4
+    warmup_epoches: 10
+    lr_min: 2e-5
+
+# lr_scheduler:
+  # core_method: multistep
+  # gamma: 0.1
+  # step_size:
+  # - 10
+  # - 15
 model:
   args:
     head_dim: 384 # reg and cls head
@@ -101,7 +115,7 @@ model:
       - 5
       - 8
       layer_strides:
-      - 2
+      - 1
       - 2
       - 2
       num_filters:
@@ -113,10 +127,9 @@ model:
       - 128
       - 128
       upsample_strides:
+      - 1
       - 2
       - 4
-      - 8
-      feature_pyramid: true
 
     shrink_header:
       dim:
@@ -132,8 +145,8 @@ model:
     - 0.4
     - 0.4
     - 4
-  core_method: point_pillar_range_fusion
-name: point_pillar_range_fusion
+  core_method: point_pillar_range_fusion_v2
+name: point_pillar_range_fusion_v2
 optimizer:
   args:
     eps: 1.0e-10
@@ -174,11 +187,6 @@ preprocess:
   cav_lidar_range: *id001
   core_method: SpVoxelPreprocessor
 root_dir: opv2v_data_dumping/train
-train_params:
-  batch_size: 2
-  epoches: 30
-  eval_freq: 100
-  max_cav: 5
-  save_freq: 10
+
 validate_dir: opv2v_data_dumping/test
 yaml_parser: load_point_pillar_params

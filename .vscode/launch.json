@@ -6,7 +6,7 @@
     "configurations": [
         {
             "name": "multi_gpu_train",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "program": "./opencood/tools/train.py",
             "console": "integratedTerminal",
@@ -19,7 +19,7 @@
         },
         {
             "name": "inference",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "program": "./opencood/tools/inference.py",
             "console": "integratedTerminal",
@@ -32,13 +32,12 @@
         },
         {
             "name": "train",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "program": "./opencood/tools/train.py",
             "console": "integratedTerminal",
             "justMyCode": false,
-            "args":["--hypes_yaml","./opencood/hypes_yaml/point_pillar_range_fusion_v3.yaml",
-                    ],
+            "args":["--hypes_yaml","./opencood/hypes_yaml/point_pillar_denoise.yaml"],
             "env": {
                 "DISPLAY":"192.168.0.109:0.0"
             }

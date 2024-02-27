@@ -9,15 +9,15 @@ from opencood.models.sub_modules.point_pillar_scatter import PointPillarScatter
 from opencood.models.sub_modules.base_bev_backbone import BaseBEVBackbone
 from opencood.models.sub_modules.downsample_conv import DownsampleConv
 from opencood.models.sub_modules.naive_compress import NaiveCompressor
-from opencood.models.fuse_modules.range_attn_fusion import RangeAttentionFusion
+from opencood.models.fuse_modules.range_attn_fusion_v2 import RangeAttentionFusion
 
 
-class PointPillarRangeFusion(nn.Module):
+class PointPillarRangeFusionV2(nn.Module):
     """
     Range-aware implementation with point pillar backbone.
     """
     def __init__(self, args):
-        super(PointPillarRangeFusion, self).__init__()
+        super().__init__()
 
         self.max_cav = args['max_cav']
         # PIllar VFE
@@ -36,7 +36,7 @@ class PointPillarRangeFusion(nn.Module):
 
         if args['compression'] > 0:
             self.compression = True
-            self.compressor = NaiveCompressor(256, args['compression'])
+            self.naive_compressor = NaiveCompressor(256, args['compression'])
         
         output_fusion_feature_dim = args['head_dim']
         self.fusion_net = RangeAttentionFusion(args['raa_fusion'],256)
@@ -97,7 +97,7 @@ class PointPillarRangeFusion(nn.Module):
             spatial_features_2d = self.shrink_conv(spatial_features_2d)
         # compressor
         if self.compression:
-            spatial_features_2d = self.compressor(spatial_features_2d,record_len)
+            spatial_features_2d = self.naive_compressor(spatial_features_2d)
 
         fused_feature = self.fusion_net(spatial_features_2d,record_len)
         batch_dict['spatial_features_2d'] = fused_feature

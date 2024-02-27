@@ -77,7 +77,8 @@ class IntermediateFusionDataset(basedataset.BaseDataset):
         pairwise_t_matrix = \
             self.get_pairwise_transformation(base_data_dict,
                                              self.max_cav)
-
+        
+        distances = []
         processed_features = []
         object_stack = []
         object_id_stack = []
@@ -103,7 +104,8 @@ class IntermediateFusionDataset(basedataset.BaseDataset):
                                       1]) ** 2)
             if distance > opencood.data_utils.datasets.COM_RANGE:
                 continue
-
+            
+            distances.append(distance)
             selected_cav_processed = self.get_item_single_car(
                 selected_cav_base,
                 ego_lidar_pose)
@@ -160,6 +162,7 @@ class IntermediateFusionDataset(basedataset.BaseDataset):
         velocity = velocity + (self.max_cav - len(velocity)) * [0.]
         time_delay = time_delay + (self.max_cav - len(time_delay)) * [0.]
         infra = infra + (self.max_cav - len(infra)) * [0.]
+        distances = distances + (self.max_cav - len(distances)) * [math.inf]
         spatial_correction_matrix = np.stack(spatial_correction_matrix)
         padding_eye = np.tile(np.eye(4)[None],(self.max_cav - len(
                                                spatial_correction_matrix),1,1))
@@ -177,6 +180,7 @@ class IntermediateFusionDataset(basedataset.BaseDataset):
              'velocity': velocity,
              'time_delay': time_delay,
              'infra': infra,
+             'distance_to_ego': distances,
              'spatial_correction_matrix': spatial_correction_matrix,
              'pairwise_t_matrix': pairwise_t_matrix})
 
@@ -297,11 +301,15 @@ class IntermediateFusionDataset(basedataset.BaseDataset):
         # and current timestamp
         spatial_correction_matrix_list = []
 
+        distances = []
         if self.visualize:
             origin_lidar = []
 
         for i in range(len(batch)):
             ego_dict = batch[i]['ego']
+
+            distances.append(ego_dict['distance_to_ego'])
+
             object_bbx_center.append(ego_dict['object_bbx_center'])
             object_bbx_mask.append(ego_dict['object_bbx_mask'])
             object_ids.append(ego_dict['object_ids'])
@@ -332,7 +340,8 @@ class IntermediateFusionDataset(basedataset.BaseDataset):
         record_len = torch.from_numpy(np.array(record_len, dtype=int))
         label_torch_dict = \
             self.post_processor.collate_batch(label_dict_list)
-
+        # (B, max_cav)
+        distances = torch.from_numpy(np.array(distances))
         # (B, max_cav)
         velocity = torch.from_numpy(np.array(velocity))
         time_delay = torch.from_numpy(np.array(time_delay))
@@ -351,6 +360,7 @@ class IntermediateFusionDataset(basedataset.BaseDataset):
                                    'object_bbx_mask': object_bbx_mask,
                                    'processed_lidar': processed_lidar_torch_dict,
                                    'record_len': record_len,
+                                   'distance_to_ego': distances,
                                    'label_dict': label_torch_dict,
                                    'object_ids': object_ids[0],
                                    'prior_encoding': prior_encoding,

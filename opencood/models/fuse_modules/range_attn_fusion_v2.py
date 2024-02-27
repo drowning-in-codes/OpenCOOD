@@ -1,19 +1,28 @@
+# Author: proanimer
+# Email: <bukalala174@gmail.com>
+# License: MIT
+
+
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
+from opencood.models.sub_modules.denoiseModel import AutoEncoder, DenoiseModel
+from opencood.models.fuse_modules.Attn_block import Attn_Block
 import numpy as np
-from opencood.models.fuse_modules.denoiseModel import AutoEncoder, DenoiseModel
-from opencood.models.fuse_modules.Attn_block import Attn_V_Block,Attn_L_Block
+import os
 
-# goals : combine local and global attention,multiscale attention,distance(range) encoding
 
-class RangeAttentionFusion_V2(nn.Module):
-    def __init__(self, model_cfg: dict,input_dim: int,n_head:int=3):
+class RangeAttentionFusion(nn.Module):
+    def __init__(self, model_cfg, input_channels):
         super().__init__()
-        self.encoder = []
-        self.decoder = []
         self.model_cfg = model_cfg
+        self.compress = False
+
+        if 'compression' in model_cfg and model_cfg['compression'] > 0:
+            self.compress = True
+            self.compress_layer = model_cfg['compression']
+
         if 'layer_nums' in self.model_cfg:
+
             assert len(self.model_cfg['layer_nums']) == \
                    len(self.model_cfg['layer_strides']) == \
                    len(self.model_cfg['num_filters'])
@@ -35,9 +44,14 @@ class RangeAttentionFusion_V2(nn.Module):
             upsample_strides = num_upsample_filters = []
 
         num_levels = len(layer_nums)
-  
-        c_in_list = [input_dim, *num_filters[:-1]]
+        c_in_list = [input_channels, *num_filters[:-1]]
+
+        self.blocks = nn.ModuleList()
         self.fuse_modules = nn.ModuleList()
+        self.deblocks = nn.ModuleList()
+
+        if self.compress:
+            self.compression_modules = nn.ModuleList()
 
         for idx in range(num_levels):
             cur_layers = [
@@ -49,9 +63,12 @@ class RangeAttentionFusion_V2(nn.Module):
                 nn.BatchNorm2d(num_filters[idx], eps=1e-3, momentum=0.01),
                 nn.ReLU()
             ]
-
-            fuse_network = RangeAttentionBlock(num_filters[idx])
+            fuse_network = Attn_Block(num_filters[idx],4)
             self.fuse_modules.append(fuse_network)
+            if self.compress and self.compress_layer - idx > 0:
+                self.compression_modules.append(AutoEncoder(num_filters[idx],
+                                                            self.compress_layer-idx))
+
             for k in range(layer_nums[idx]):
                 cur_layers.extend([
                     nn.Conv2d(num_filters[idx], num_filters[idx],
@@ -60,7 +77,7 @@ class RangeAttentionFusion_V2(nn.Module):
                     nn.ReLU()
                 ])
 
-            self.encoder.append(nn.Sequential(*cur_layers))
+            self.blocks.append(nn.Sequential(*cur_layers))
             if len(upsample_strides) > 0:
                 stride = upsample_strides[idx]
                 if stride >= 1:
@@ -89,7 +106,7 @@ class RangeAttentionFusion_V2(nn.Module):
 
         c_in = sum(num_upsample_filters)
         if len(upsample_strides) > num_levels:
-            self.decoder.append(nn.Sequential(
+            self.deblocks.append(nn.Sequential(
                 nn.ConvTranspose2d(c_in, c_in, upsample_strides[-1],
                                    stride=upsample_strides[-1], bias=False),
                 nn.BatchNorm2d(c_in, eps=1e-3, momentum=0.01),
@@ -99,17 +116,21 @@ class RangeAttentionFusion_V2(nn.Module):
         self.num_bev_features = c_in
 
     def forward(self, spatial_features,record_len):
+
         ups = []
         ret_dict = {}
         x = spatial_features
+
         for i in range(len(self.blocks)):
-            x = self.encoder[i](x)
+            x = self.blocks[i](x)
+            if self.compress and i < len(self.compression_modules):
+                x = self.compression_modules[i](x)
             x_fuse = self.fuse_modules[i](x, record_len)
             stride = int(spatial_features.shape[2] / x.shape[2])
             ret_dict['spatial_features_%dx' % stride] = x
 
-            if len(self.decoder) > 0:
-                ups.append(self.decoder[i](x_fuse))
+            if len(self.deblocks) > 0:
+                ups.append(self.deblocks[i](x_fuse))
             else:
                 ups.append(x_fuse)
 
@@ -117,9 +138,6 @@ class RangeAttentionFusion_V2(nn.Module):
             x = torch.cat(ups, dim=1)
         elif len(ups) == 1:
             x = ups[0]
-        if len(self.decoder) > len(self.blocks):
-            x = self.decoder[-1](x)
-        data_dict['spatial_features_2d'] = x
-        return data_dict
-
-      
+        if len(self.deblocks) > len(self.blocks):
+            x = self.deblocks[-1](x)
+        return  x

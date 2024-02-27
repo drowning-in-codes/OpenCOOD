@@ -70,15 +70,16 @@ class WeightedSmoothL1Loss(nn.Module):
         return loss
 
 
-class PointPillarLoss(nn.Module):
+class PointPillarDenoiseLoss(nn.Module):
     def __init__(self, args):
-        super(PointPillarLoss, self).__init__()
+        super().__init__()
         self.reg_loss_func = WeightedSmoothL1Loss()
         self.alpha = 0.25
         self.gamma = 2.0
 
         self.cls_weight = args['cls_weight']
         self.reg_coe = args['reg']
+        self.denoise_weight = args['denoise_weight'] if 'denoise_weight' in args else 1.0
         self.loss_dict = {}
 
     def forward(self, output_dict, target_dict):
@@ -90,7 +91,8 @@ class PointPillarLoss(nn.Module):
         """
         rm = output_dict['rm']
         psm = output_dict['psm']
-        targets = target_dict['targets']
+        targets = target_dict['targets']            
+
         cls_preds = psm.permute(0, 2, 3, 1).contiguous()
 
         box_cls_labels = target_dict['pos_equal_one']
@@ -136,11 +138,14 @@ class PointPillarLoss(nn.Module):
         reg_loss = loc_loss_src.sum() / rm.shape[0]
         reg_loss *= self.reg_coe
 
-        total_loss = reg_loss + conf_loss
-
-        self.loss_dict.update({'total_loss': total_loss,
-                               'reg_loss': reg_loss,
-                               'conf_loss': conf_loss})
+        # Denoise loss
+        if self.training:
+            denoise_loss = self.denoise_loss_func(output_dict['spatial_features_2d_downsample'],output_dict['spatial_features_2d_origin'],weights=self.denoise_weight)
+            total_loss = reg_loss + conf_loss + denoise_loss
+            self.loss_dict.update({'total_loss': total_loss,
+                                'reg_loss': reg_loss,
+                                'conf_loss': conf_loss,
+                                'denoise_loss': denoise_loss})
 
         return total_loss
 
@@ -175,6 +180,10 @@ class PointPillarLoss(nn.Module):
         assert weights.shape.__len__() == loss.shape.__len__()
 
         return loss * weights
+
+    def denoise_loss_func(self,input:torch.Tensor,target:torch.Tensor,weights=1.0):
+        denoise_loss = F.mse_loss(input,target)
+        return denoise_loss * weights
 
     @staticmethod
     def sigmoid_cross_entropy_with_logits(input: torch.Tensor, target: torch.Tensor):
@@ -229,16 +238,17 @@ class PointPillarLoss(nn.Module):
         total_loss = self.loss_dict['total_loss']
         reg_loss = self.loss_dict['reg_loss']
         conf_loss = self.loss_dict['conf_loss']
+        denoise_loss = self.loss_dict["denoise_loss"]
         if pbar is None:
             print("[epoch %d][%d/%d], || Loss: %.4f || Conf Loss: %.4f"
-                " || Loc Loss: %.4f" % (
+                " || Loc Loss: %.4f || Denoise Loss: %.4f" % (
                     epoch, batch_id + 1, batch_len,
-                    total_loss.item(), conf_loss.item(), reg_loss.item()))
+                    total_loss.item(), conf_loss.item(), reg_loss.item(),denoise_loss.item()))
         else:
             pbar.set_description("[epoch %d][%d/%d], || Loss: %.4f || Conf Loss: %.4f"
-                  " || Loc Loss: %.4f" % (
+                  " || Loc Loss: %.4f || Denoise Loss: %.4f" % (
                       epoch, batch_id + 1, batch_len,
-                      total_loss.item(), conf_loss.item(), reg_loss.item()))
+                      total_loss.item(), conf_loss.item(), reg_loss.item(),denoise_loss.item()))
 
 
         writer.add_scalar('Regression_loss', reg_loss.item(),

@@ -5,6 +5,7 @@
 
 import argparse
 import os
+import numpy as np
 import datetime
 import statistics
 from types import SimpleNamespace
@@ -141,7 +142,7 @@ def main():
 
     # init wandb
     # run = wandb.init(project=__PROJECT__,config=opt,job_type="train")
-    logger.info(f"{opt['hypes_yaml']} Training start {opt['model_dir'] if opt['model_dir'] else ''} \n")
+    logger.info(f"{opt.hypes_yaml} Training start {opt.model_dir if opt.model_dir else ''} \n")
     epoches = hypes['train_params']['epoches']
     # used to help schedule learning rate
     for epoch in range(init_epoch, max(epoches, init_epoch)):
@@ -203,9 +204,11 @@ def main():
         # logger info
         end_time = datetime.datetime.now()
         training_time = end_time - start_time
-        logger.info(f'Epoch: {epoch}, Learning Rate: {param_group["lr"]},Training time: {training_time},Loss: {mean(avg_loss)}\n')
-
-        if (epoch+1) % hypes['train_params']['save_freq'] == 0:
+        logger.info(f'Epoch: {epoch}, Learning Rate: {param_group["lr"]},Training time: {training_time},Loss: {np.mean(avg_loss)}\n')
+        
+        # after training 20+ epochs,results are saved every 5 epochs
+        # this is because I found that the model is progressively stable here 
+        if (epoch+1 < 20 and (epoch+1) % hypes['train_params']['save_freq'] == 0) or (epoch+1 >= 20 and (epoch+1) % 5 == 0):
             torch.save(model_without_ddp.state_dict(),
                 os.path.join(saved_path, 'net_epoch%d.pth' % (epoch + 1)))
 
@@ -230,7 +233,7 @@ def main():
 
     print('Training Finished, checkpoints saved to %s' % saved_path)
 
-    logger.info(f"{opt['hypes_yaml']} Training finish {opt['model_dir'] if opt['model_dir'] else ''} \n")
+    logger.info(f"{opt.hypes_yaml} Training finish {opt.model_dir if opt.model_dir else ''} \n")
 
 
 if __name__ == '__main__':

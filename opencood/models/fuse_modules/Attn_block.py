@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from opencood.models.fuse_modules.range_fusion_block import LocalAttention,AgentAttention
+from opencood.models.fuse_modules.range_fusion_block import LocalAttention,CrossAgentWiseAttention
 
 class DoubleConv(nn.Module):
     def __init__(self, in_channels, out_channels, mid_channels=None):
@@ -168,7 +168,7 @@ class MultiHead_G(nn.Module):
     def __init__(self,input_dim,num_head):
         super().__init__()
         self.num_head = num_head
-        self.attention_g = AgentAttention(input_dim//self.num_head)
+        self.attention_g = CrossAgentWiseAttention(input_dim//self.num_head)
 
     
     def forward(self,spatial_feaure):

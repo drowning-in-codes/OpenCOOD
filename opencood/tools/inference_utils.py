@@ -62,12 +62,15 @@ def inference_early_fusion(batch_data, model, dataset):
     cav_content = batch_data['ego']
 
     output_dict['ego'] = model(cav_content)
-
+    if 'communication_rates' in output_dict['ego']:
+        communication_rates = output_dict['ego']['communication_rates']
+    else:
+        communication_rates = 1
     pred_box_tensor, pred_score, gt_box_tensor = \
         dataset.post_process(batch_data,
                              output_dict)
 
-    return pred_box_tensor, pred_score, gt_box_tensor
+    return pred_box_tensor, pred_score, gt_box_tensor,communication_rates
 
 
 def inference_intermediate_fusion(batch_data, model, dataset):

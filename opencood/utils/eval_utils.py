@@ -152,7 +152,7 @@ def calculate_ap(result_stat, iou, global_sort_detections):
     return ap, mrec, mprec
 
 
-def eval_final_results(result_stat, save_path, global_sort_detections,epoch:int=None,run=None):
+def eval_final_results(result_stat, save_path, global_sort_detections,epoch:int=None,run=None,**kwargs):
     dump_dict = {}
 
     ap_30, mrec_30, mpre_30 = calculate_ap(result_stat, 0.30, global_sort_detections)
@@ -167,6 +167,7 @@ def eval_final_results(result_stat, save_path, global_sort_detections,epoch:int=
                       'mpre_70': mpre_70,
                       'mrec_70': mrec_70,
                       })
+    dump_dict.update(kwargs)
     if epoch:
         filename = f'{epoch}_eval.yaml'
         global_sort_filename = f'{epoch}_eval_global_sort.yaml'

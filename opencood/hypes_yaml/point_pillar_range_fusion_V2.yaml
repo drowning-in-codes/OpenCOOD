@@ -19,8 +19,8 @@ loss:
     reg: 2.0
   core_method: point_pillar_loss
 train_params:
-  batch_size: 3
-  epoches: &epoches 30
+  batch_size: 2
+  epoches: &epoches 35
   eval_freq: 100
   max_cav: 5
   save_freq: 10

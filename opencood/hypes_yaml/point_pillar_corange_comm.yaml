@@ -98,6 +98,31 @@ model:
         - !!binary |
           wAIAAAAAAADIAAAAAAAAAAEAAAAAAAAA
       num_features: 64
+
+    communication:
+
+     multi_scale: False
+     layer_nums:
+      - 3
+      - 5
+      - 8
+     layer_strides:
+      - 1
+      - 2
+      - 2
+     num_filters:
+      - 64
+      - 128
+      - 256
+     num_upsample_filter:
+      - 128
+      - 128
+      - 128
+     upsample_strides:
+      - 1
+      - 2
+      - 4
+
     raa_fusion:
       layer_nums:
       - 3
@@ -120,22 +145,22 @@ model:
       - 2
       - 4
 
-    shrink_header:
-      dim:
-      - 256
-      input_dim: 384
-      kernal_size:
-      - 1
-      padding:
-      - 0
-      stride:
-      - 1
+    # shrink_header:
+    #   dim:
+    #   - 256
+    #   input_dim: 384
+    #   kernal_size:
+    #   - 1
+    #   padding:
+    #   - 0
+    #   stride:
+    #   - 1
     voxel_size: &id002
     - 0.4
     - 0.4
     - 4
-  core_method: point_pillar_range_fusion
-name: point_pillar_range_fusion
+  core_method: point_pillar_range_comm_fusion
+name: point_pillar_range_comm_fusion
 optimizer:
   args:
     eps: 1.0e-10

@@ -115,7 +115,7 @@ class RangeAttentionFusion(nn.Module):
 
         self.num_bev_features = c_in
 
-    def forward(self, spatial_features,record_len):
+    def forward(self, spatial_features,record_len,):
 
         ups = []
         ret_dict = {}
@@ -124,7 +124,7 @@ class RangeAttentionFusion(nn.Module):
             x = self.blocks[i](x)
             if self.compress and i < len(self.compression_modules):
                 x = self.compression_modules[i](x)
-            x_fuse = self.fuse_modules[i](x, record_len)
+            x_fuse = self.fuse_modules[i](x, record_len,)
             stride = int(spatial_features.shape[2] / x.shape[2])
             ret_dict['spatial_features_%dx' % stride] = x
 

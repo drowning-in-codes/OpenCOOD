@@ -3,21 +3,20 @@
 # License: TDG-Attribution-NonCommercial-NoDistrib
 
 import torch.nn as nn
-
+import numpy as np
 from opencood.models.sub_modules.pillar_vfe import PillarVFE
 from opencood.models.sub_modules.point_pillar_scatter import PointPillarScatter
 from opencood.models.sub_modules.base_bev_backbone import BaseBEVBackbone
 from opencood.models.sub_modules.downsample_conv import DownsampleConv
 from opencood.models.sub_modules.naive_compress import NaiveCompressor
-from opencood.models.fuse_modules.range_attn_fusion import RangeAttentionFusion
+from opencood.models.sub_modules.co_comm import coComm
 
-
-class PointPillarRangeFusion(nn.Module):
+class PointPillarRangeCommFusion(nn.Module):
     """
     Range-aware implementation with point pillar backbone.
     """
     def __init__(self, args):
-        super(PointPillarRangeFusion, self).__init__()
+        super().__init__()
 
         self.max_cav = args['max_cav']
         # PIllar VFE
@@ -27,6 +26,7 @@ class PointPillarRangeFusion(nn.Module):
                                     point_cloud_range=args['lidar_range'])
         self.scatter = PointPillarScatter(args['point_pillar_scatter'])
         self.backbone = BaseBEVBackbone(args['base_bev_backbone'], 64)
+        backbone_dim = sum(args["base_bev_backbone"]['num_upsample_filter'])
         # used to downsample the feature map for efficient computation
         self.shrink_flag = False
         if 'shrink_header' in args:
@@ -36,10 +36,21 @@ class PointPillarRangeFusion(nn.Module):
 
         if args['compression'] > 0:
             self.compression = True
-            self.compressor = NaiveCompressor(256, args['compression'])
+            if self.shrink_flag:
+                self.compressor = NaiveCompressor(args['shrink_header'], args['compression'])
+            else:
+                self.compressor = NaiveCompressor(backbone_dim, args['compression'])
         
-        output_fusion_feature_dim = args['head_dim']
-        self.fusion_net = RangeAttentionFusion(args['raa_fusion'],256)
+        if self.shrink_flag:
+            output_fusion_feature_dim = args['shrink_header']['dim'][-1]
+            backbone_dim = args['shrink_header']['dim'][-1]
+        else:
+            output_fusion_feature_dim = args['head_dim']
+        self.multi_scale = args['communication']['multi_scale']
+        # feature fusion
+        # self.fusion_net = RangeAttentionFusion(args['raa_fusion'],384)
+        # communication
+        self.comm = coComm(H=100,W=352,multi_scale=self.multi_scale,args=args["communication"],fusion_args=args["raa_fusion"],input_dim=backbone_dim)
 
         self.cls_head = nn.Conv2d(output_fusion_feature_dim, args['anchor_number'],
                                   kernel_size=1)
@@ -80,7 +91,6 @@ class PointPillarRangeFusion(nn.Module):
         voxel_coords = data_dict['processed_lidar']['voxel_coords']
         voxel_num_points = data_dict['processed_lidar']['voxel_num_points']
         record_len = data_dict['record_len']
-        distance_to_ego = data_dict['distance_to_ego'] # [Batch_size,max_cav_num]
 
         batch_dict = {'voxel_features': voxel_features,
                       'voxel_coords': voxel_coords,
@@ -91,22 +101,32 @@ class PointPillarRangeFusion(nn.Module):
         # n, c -> N, C, H, W
         batch_dict = self.scatter(batch_dict)
         batch_dict = self.backbone(batch_dict)
-
         spatial_features_2d = batch_dict['spatial_features_2d']
-        
-        # spatial_features_2d = batch_dict['spatial_features']
+
         # downsample feature to reduce memory
         if self.shrink_flag:
             spatial_features_2d = self.shrink_conv(spatial_features_2d)
         # compressor
         if self.compression:
             spatial_features_2d = self.compressor(spatial_features_2d,record_len)
-
-        fused_feature = self.fusion_net(spatial_features_2d,record_len)
-        batch_dict['spatial_features_2d'] = fused_feature
+        psm = self.cls_head(spatial_features_2d)
+        # communication
+        if self.multi_scale:
+            fused_feature,communication_rates,communication_feat,last_conf_map = self.comm(batch_dict['spatial_features'],record_len=record_len,conf_map=psm,backbone=self.backbone)
+               # downsample feature to reduce memory
+            if self.shrink_flag:
+                fused_feature = self.shrink_conv(fused_feature)
+        else:
+            fused_feature,communication_rates,communication_feat,last_conf_map = self.comm(spatial_features_2d,record_len=record_len,conf_map=psm)
+        
         psm = self.cls_head(fused_feature)
         rm = self.reg_head(fused_feature)
         output_dict = {'psm': psm,
-                       'rm': rm}
+                       'rm': rm,
+                       'communication_rates':communication_rates,
+                       'communication_feat':communication_feat,
+                       "before_comm_feat":spatial_features_2d,
+                       'last_conf_map':last_conf_map,
+                       }
 
         return output_dict

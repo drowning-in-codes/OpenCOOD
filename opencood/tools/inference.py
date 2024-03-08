@@ -68,7 +68,7 @@ def main():
     print('Creating Model')
     model = train_utils.create_model(hypes)
     # Enable traing False
-    model.__setattr__("training", False)
+    # model.__setattr__("training", False)
     # we assume gpu is necessary
     if torch.cuda.is_available():
         model.cuda()
@@ -117,7 +117,7 @@ def main():
                                                            model,
                                                            opencood_dataset)
             elif opt.fusion_method == 'intermediate':
-                pred_box_tensor, pred_score, gt_box_tensor = \
+                pred_box_tensor, pred_score, gt_box_tensor,communication_rates = \
                     inference_utils.inference_intermediate_fusion(batch_data,
                                                                   model,
                                                                   opencood_dataset)
@@ -201,7 +201,7 @@ def main():
 
     eval_utils.eval_final_results(result_stat,
                                   opt.model_dir,
-                                  opt.global_sort_detections,epoch)
+                                  opt.global_sort_detections,epoch,communication_rates=communication_rates)
     if opt.show_sequence:
         vis.destroy_window()
 

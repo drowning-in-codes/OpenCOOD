@@ -34,11 +34,11 @@ def inference_late_fusion(batch_data, model, dataset):
     for cav_id, cav_content in batch_data.items():
         output_dict[cav_id] = model(cav_content)
 
-    pred_box_tensor, pred_score, gt_box_tensor = \
-        dataset.post_process(batch_data,
-                             output_dict)
+    pred_box_tensor, pred_score, gt_box_tensor = dataset.post_process(
+        batch_data, output_dict
+    )
 
-    return pred_box_tensor, pred_score, gt_box_tensor
+    return pred_box_tensor, pred_score, gt_box_tensor, 1
 
 
 def inference_early_fusion(batch_data, model, dataset):
@@ -59,18 +59,23 @@ def inference_early_fusion(batch_data, model, dataset):
         The tensor of gt bounding box.
     """
     output_dict = OrderedDict()
-    cav_content = batch_data['ego']
+    cav_content = batch_data["ego"]
 
-    output_dict['ego'] = model(cav_content)
-    if 'communication_rates' in output_dict['ego']:
-        communication_rates = output_dict['ego']['communication_rates']
+    output_dict["ego"] = model(cav_content)
+    if "com" in output_dict["ego"]:
+        if isinstance(output_dict["ego"]["com"], torch.Tensor):
+            communication_rates = output_dict["ego"]["com"].item()
+        else:
+            communication_rates = output_dict["ego"]["com"]
     else:
+        # print('No communication rate found in the output dict, set to 1')
         communication_rates = 1
-    pred_box_tensor, pred_score, gt_box_tensor = \
-        dataset.post_process(batch_data,
-                             output_dict)
-
-    return pred_box_tensor, pred_score, gt_box_tensor,communication_rates
+    pred_box_tensor, pred_score, gt_box_tensor = dataset.post_process(
+        batch_data, output_dict
+    )
+    if communication_rates == 1:
+        return pred_box_tensor, pred_score, gt_box_tensor
+    return pred_box_tensor, pred_score, gt_box_tensor, communication_rates
 
 
 def inference_intermediate_fusion(batch_data, model, dataset):
@@ -101,6 +106,6 @@ def save_prediction_gt(pred_tensor, gt_tensor, pcd, timestamp, save_path):
     gt_np = torch_tensor_to_numpy(gt_tensor)
     pcd_np = torch_tensor_to_numpy(pcd)
 
-    np.save(os.path.join(save_path, '%04d_pcd.npy' % timestamp), pcd_np)
-    np.save(os.path.join(save_path, '%04d_pred.npy' % timestamp), pred_np)
-    np.save(os.path.join(save_path, '%04d_gt.npy_test' % timestamp), gt_np)
+    np.save(os.path.join(save_path, "%04d_pcd.npy" % timestamp), pcd_np)
+    np.save(os.path.join(save_path, "%04d_pred.npy" % timestamp), pred_np)
+    np.save(os.path.join(save_path, "%04d_gt.npy_test" % timestamp), gt_np)

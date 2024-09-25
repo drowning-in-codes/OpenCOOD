@@ -15,7 +15,7 @@ import torch
 import torch.optim as optim
 import timm
 
-def load_saved_model(saved_path, model):
+def load_saved_model(saved_path, model,last_epoch=-1):
     """
     Load saved model if exiseted
 
@@ -40,14 +40,16 @@ def load_saved_model(saved_path, model):
         if file_list:
             epochs_exist = []
             for file_ in file_list:
-                result = re.findall(".*epoch(.*).pth.*", file_)
+                result = re.findall(".*epoch(\d+).*.pth.*", file_)
                 epochs_exist.append(int(result[0]))
             initial_epoch_ = max(epochs_exist)
         else:
             initial_epoch_ = 0
         return initial_epoch_
-
-    initial_epoch = findLastCheckpoint(saved_path)
+    if last_epoch == -1:
+        initial_epoch = findLastCheckpoint(saved_path)
+    else: 
+        initial_epoch = last_epoch
     if initial_epoch > 0:
         model_file = os.path.join(saved_path,
                          'net_epoch%d.pth' % initial_epoch) \
@@ -94,12 +96,10 @@ def setup_train(hypes):
         save_name = os.path.join(full_path, 'config.yaml')
         with open(save_name, 'w') as outfile:
             yaml.dump(hypes, outfile)
-
     return full_path
 
 
-
-def create_model(hypes):
+def create_model(hypes, da=False):
     """
     Import the module "models/[model_name].py
 
@@ -107,6 +107,9 @@ def create_model(hypes):
     __________
     hypes : dict
         Dictionary containing parameters.
+
+    da : bool
+        If true, import the domain adaptation model.
 
     Returns
     -------
@@ -116,7 +119,8 @@ def create_model(hypes):
     backbone_name = hypes['model']['core_method']
     backbone_config = hypes['model']['args']
 
-    model_filename = "opencood.models." + backbone_name
+    model_filename = "opencood.models." + backbone_name if not da \
+        else "opencood.models.domain_adaptions." + backbone_name
     model_lib = importlib.import_module(model_filename)
     model = None
     target_model_name = backbone_name.replace('_', '')
@@ -133,7 +137,6 @@ def create_model(hypes):
         exit(0)
     instance = model(backbone_config)
     return instance
-
 
 def create_loss(hypes):
     """
@@ -253,8 +256,8 @@ def setup_lr_schedular(hypes, optimizer, n_iter_per_epoch):
     else:
         sys.exit('not supported lr schedular')
 
-    return scheduler
 
+    return scheduler
 
 def to_device(inputs, device):
     if isinstance(inputs, list):

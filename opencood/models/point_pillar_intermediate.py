@@ -27,6 +27,7 @@ class PointPillarIntermediate(nn.Module):
                                   kernel_size=1)
         self.reg_head = nn.Conv2d(128 * 3, 7 * args['anchor_num'],
                                   kernel_size=1)
+        self.max_cav = args['max_cav'] if 'max_cav' in args else 5
 
     def forward(self, data_dict):
 

@@ -96,8 +96,8 @@ class BaseDataset(Dataset):
         else:
             self.async_flag = False
             self.async_overhead = 0  # ms
-            self.async_mode = 'sim'
-            self.loc_err_flag = False
+            self.async_mode = False # 'real' or 'sim' will both add noise
+            self.loc_err_flag = False 
             self.xyz_noise_std = 0
             self.ryp_noise_std = 0
             self.data_size = 0  # Mb (Megabits)
@@ -140,6 +140,9 @@ class BaseDataset(Dataset):
             if int(cav_list[0]) < 0:
                 cav_list = cav_list[1:] + [cav_list[0]]
 
+            import random
+            ego_id = random.randint(0, min(self.max_cav - 1,len(cav_list)-1))
+
             # loop over all CAV data
             for (j, cav_id) in enumerate(cav_list):
                 if j > self.max_cav - 1:
@@ -176,7 +179,7 @@ class BaseDataset(Dataset):
                 # Assume all cavs will have the same timestamps length. Thus
                 # we only need to calculate for the first vehicle in the
                 # scene.
-                if j == 0:
+                if j == ego_id:
                     # we regard the agent with the minimum id as the ego
                     self.scenario_database[i][cav_id]['ego'] = True
                     if not self.len_record:

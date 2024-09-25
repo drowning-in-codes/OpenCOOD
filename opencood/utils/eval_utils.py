@@ -152,7 +152,7 @@ def calculate_ap(result_stat, iou, global_sort_detections):
     return ap, mrec, mprec
 
 
-def eval_final_results(result_stat, save_path, global_sort_detections,epoch:int=None,run=None,**kwargs):
+def eval_final_results(result_stat, save_path, global_sort_detections,epoch:int=None,run=None,loc_error=0,heading_error=0,**kwargs):
     dump_dict = {}
 
     ap_30, mrec_30, mpre_30 = calculate_ap(result_stat, 0.30, global_sort_detections)
@@ -174,7 +174,9 @@ def eval_final_results(result_stat, save_path, global_sort_detections,epoch:int=
     else:
         filename = 'eval.yaml'
         global_sort_filename = 'eval_global_sort.yaml'
-        
+    if loc_error != 0 or heading_error != 0:
+        filename = f'loc_{loc_error}_head_{heading_error}_{filename}'
+
     output_file = filename if not global_sort_detections else global_sort_filename
     yaml_utils.save_yaml(dump_dict, os.path.join(save_path, output_file))
     if run:

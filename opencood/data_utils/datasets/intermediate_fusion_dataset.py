@@ -5,7 +5,6 @@
 """
 Dataset class for intermediate fusion
 """
-import random
 import math
 import warnings
 from collections import OrderedDict
@@ -29,7 +28,7 @@ class IntermediateFusionDataset(basedataset.BaseDataset):
     This class is for intermediate fusion where each vehicle transmit the
     deep features to ego.
     """
-    def __init__(self, params, visualize, train=True):
+    def __init__(self, params, visualize, train=True,*args, **kwargs):
         super(IntermediateFusionDataset, self). \
             __init__(params, visualize, train)
 
@@ -69,8 +68,8 @@ class IntermediateFusionDataset(basedataset.BaseDataset):
                 ego_id = cav_id
                 ego_lidar_pose = cav_content['params']['lidar_pose']
                 break
-        assert cav_id == list(base_data_dict.keys())[
-            0], "The first element in the OrderedDict must be ego"
+        # assert cav_id == list(base_data_dict.keys())[
+        #     0], "The first element in the OrderedDict must be ego"
         assert ego_id != -1
         assert len(ego_lidar_pose) > 0
 
@@ -341,7 +340,7 @@ class IntermediateFusionDataset(basedataset.BaseDataset):
         label_torch_dict = \
             self.post_processor.collate_batch(label_dict_list)
         # (B, max_cav)
-        distances = torch.from_numpy(np.array(distances))
+        distances = torch.from_numpy(np.array(distances, dtype=np.float32))
         # (B, max_cav)
         velocity = torch.from_numpy(np.array(velocity))
         time_delay = torch.from_numpy(np.array(time_delay))

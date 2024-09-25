@@ -1,0 +1,1 @@
+python opencood/tools/inferency.py --model_dir "opencood/logs/point_pillar_range_comm_fusion_2024_04_03_10_13_37" --fusion_method "intermeidaite" --last_epoch 55  

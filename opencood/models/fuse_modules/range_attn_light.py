@@ -15,6 +15,6 @@ class RangeAttentionFusion(nn.Module):
         self.rangeAttnBlock = RangeAttentionBlock(input_channels)
     
 
-    def forward(self,spatial_features,record_len):
-        out = self.rangeAttnBlock(spatial_features,record_len)
+    def forward(self,spatial_features,record_len,distance=None):
+        out = self.rangeAttnBlock(spatial_features,record_len,distance)
         return out

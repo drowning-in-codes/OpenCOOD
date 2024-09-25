@@ -3,8 +3,8 @@
 # please refer to https://github.com/yifanlu0227/CoAlign
 
 name: point_pillar_coalign
-root_dir: "opv2v_data_dumping/train"
-validate_dir: "opv2v_data_dumping/validate"
+root_dir: "v2xset/train"
+validate_dir: "v2xset/test"
 
 
 yaml_parser: "load_point_pillar_params"

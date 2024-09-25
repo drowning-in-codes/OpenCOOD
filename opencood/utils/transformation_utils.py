@@ -8,7 +8,7 @@ Transformation utils
 """
 
 import numpy as np
-
+import math
 
 def x_to_world(pose):
     """
@@ -77,6 +77,22 @@ def x1_to_x2(x1, x2):
 
     transformation_matrix = np.dot(world_to_x2, x1_to_world)
     return transformation_matrix
+
+def dist_two_pose(cav_pose, ego_pose):
+    """
+    Calculate the distance between agent by given there pose.
+    """
+    if isinstance(cav_pose, list):
+        distance = \
+            math.sqrt((cav_pose[0] -
+                       ego_pose[0]) ** 2 +
+                      (cav_pose[1] - ego_pose[1]) ** 2)
+    else:
+        distance = \
+            math.sqrt((cav_pose[0, -1] -
+                       ego_pose[0, -1]) ** 2 +
+                      (cav_pose[1, -1] - ego_pose[1, -1]) ** 2)
+    return distance
 
 
 def dist_to_continuous(p_dist, displacement_dist, res, downsample_rate):

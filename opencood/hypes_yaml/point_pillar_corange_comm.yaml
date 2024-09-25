@@ -19,12 +19,12 @@ loss:
     reg: 2.0
   core_method: point_pillar_loss
 
-lr_scheduler:
-  core_method: multistep
-  gamma: 0.1
-  step_size:
-  - 10
-  - 15
+# lr_scheduler:
+#   core_method: multistep
+#   gamma: 0.1
+#   step_size:
+#   - 10
+#   - 15
 
 
 model:
@@ -100,50 +100,54 @@ model:
       num_features: 64
 
     communication:
-
-     multi_scale: False
-     layer_nums:
-      - 3
-      - 5
-      - 8
-     layer_strides:
-      - 1
-      - 2
-      - 2
-     num_filters:
-      - 64
-      - 128
-      - 256
-     num_upsample_filter:
-      - 128
-      - 128
-      - 128
-     upsample_strides:
-      - 1
-      - 2
-      - 4
+      with_comm: true
+      gaussian_smooth:
+          k_size: 5
+          c_sigma: 1.0
+      threshold: 0.01
+      multi_scale: false
+      layer_nums:
+        - 3
+        - 5
+        - 8
+      layer_strides:
+        - 1
+        - 2
+        - 2
+      num_filters:
+        - 64
+        - 128
+        - 256
+      num_upsample_filter:
+        - 128
+        - 128
+        - 128
+      upsample_strides:
+        - 1
+        - 2
+        - 4
 
     raa_fusion:
-      layer_nums:
-      - 3
-      - 5
-      - 8
-      layer_strides:
-      - 1
-      - 2
-      - 2
-      num_filters:
-      - 64
-      - 128
-      - 256
-      num_upsample_filter:
-      - 128
-      - 128
-      - 128
-      upsample_strides:
-      - 1
-      - 2
-      - 4
+        layer_nums:
+        - 3
+        - 5
+        - 8
+        layer_strides:
+        - 1
+        - 2
+        - 2
+        num_filters:
+        - 64
+        - 128
+        - 256
+        num_upsample_filter:
+        - 128
+        - 128
+        - 128
+        upsample_strides:
+        - 1
+        - 2
+        - 4
 
     # shrink_header:
     #   dim:
@@ -200,19 +204,19 @@ preprocess:
     voxel_size: *id002
   cav_lidar_range: *id001
   core_method: SpVoxelPreprocessor
-root_dir: opv2v_data_dumping/train
+root_dir: v2xset/train
 train_params:
   batch_size: 2
-  epoches: &epoches 30
+  epoches: &epoches 50
   eval_freq: 100
   max_cav: 5
   save_freq: 10
-validate_dir: opv2v_data_dumping/test
+validate_dir: v2xset/test
 yaml_parser: load_point_pillar_params
 
-# lr_scheduler:
-#   core_method: cosineannealwarm #step, multistep, Exponential and cosineannealwarm support
-#   epoches: *epoches
-#   warmup_lr: 2e-4
-#   warmup_epoches: 10
-#   lr_min: 2e-5
+lr_scheduler:
+  core_method: cosineannealwarm #step, multistep, Exponential and cosineannealwarm support
+  epoches: *epoches
+  warmup_lr: 2e-4
+  warmup_epoches: 15
+  lr_min: 2e-5

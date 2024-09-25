@@ -102,7 +102,7 @@ class PointPillarRangeFusion(nn.Module):
         if self.compression:
             spatial_features_2d = self.compressor(spatial_features_2d,record_len)
 
-        fused_feature = self.fusion_net(spatial_features_2d,record_len)
+        fused_feature = self.fusion_net(spatial_features_2d,record_len,distance_to_ego)
         batch_dict['spatial_features_2d'] = fused_feature
         psm = self.cls_head(fused_feature)
         rm = self.reg_head(fused_feature)

@@ -27,7 +27,7 @@ class DataAugmentor(object):
         The list of data augmented functions.
     """
 
-    def __init__(self, augment_config, train=True):
+    def __init__(self, augment_config, train=True,intermediate=False):
         self.data_augmentor_queue = []
         self.train = train
 

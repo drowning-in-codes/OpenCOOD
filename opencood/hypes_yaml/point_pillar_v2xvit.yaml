@@ -1,25 +1,25 @@
 name: point_pillar_v2xvit
-root_dir: 'v2xset/train'
-validate_dir: 'v2xset/validate'
+root_dir: 'opv2v_data_dumping/train'
+validate_dir: 'opv2v_data_dumping/test'
 
-wild_setting:
-  async: false
-  async_mode: 'sim'
-  async_overhead: 100
-  seed: 25
-  loc_err: false
-  xyz_std: 0.2
-  ryp_std: 0.2
-  data_size: 1.06 # Mb!!
-  transmission_speed: 27 # Mbps!!
-  backbone_delay: 10 # ms
+# wild_setting:
+#   async: false
+#   async_mode: 'sim'
+#   async_overhead: 100
+#   seed: 25
+#   loc_err: false
+#   xyz_std: 0.2
+#   ryp_std: 0.2
+#   data_size: 1.06 # Mb!!
+#   transmission_speed: 27 # Mbps!!
+#   backbone_delay: 10 # ms
 
 yaml_parser: "load_point_pillar_params"
 train_params:
-  batch_size: &batch_size 2
-  epoches: 60
-  eval_freq: 1
-  save_freq: 1
+  batch_size: &batch_size 1
+  epoches: 30
+  eval_freq: 50
+  save_freq: 30
   max_cav: &max_cav 5
 
 fusion:

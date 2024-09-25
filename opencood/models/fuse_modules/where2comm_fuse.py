@@ -72,7 +72,6 @@ class Communication(nn.Module):
             communication_rate = communication_mask.sum() / (L * H * W)
             # Ego
             communication_mask[0] = 1
-
             communication_masks.append(communication_mask)
             communication_rates.append(communication_rate)
         communication_rates = sum(communication_rates) / B
@@ -205,4 +204,5 @@ class Where2comm(nn.Module):
                 neighbor_feature = batch_node_features[b]
                 x_fuse.append(self.fuse_modules(neighbor_feature))
             x_fuse = torch.stack(x_fuse)
+            
         return x_fuse, communication_rates

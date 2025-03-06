@@ -22,6 +22,9 @@ from opencood.utils.pcd_utils import \
     mask_points_by_range, mask_ego_points, shuffle_points, \
     downsample_lidar_minimum
 from opencood.utils.transformation_utils import x1_to_x2
+import opencood.utils.common_utils as common_utils
+from opencood.utils.box_utils import create_bbx,mask_boxes_outside_range_numpy,corner_to_center,boxes_to_corners_3d
+
 
 
 class IntermediateFusionDataset(basedataset.BaseDataset):
@@ -29,22 +32,23 @@ class IntermediateFusionDataset(basedataset.BaseDataset):
     This class is for intermediate fusion where each vehicle transmit the
     deep features to ego.
     """
-    def __init__(self, params, visualize, train=True):
+
+    def __init__(self, params, visualize, train=True,start_index=None):
         super(IntermediateFusionDataset, self). \
             __init__(params, visualize, train)
-
+        self.start_index = start_index
         # if project first, cav's lidar will first be projected to
         # the ego's coordinate frame. otherwise, the feature will be
         # projected instead.
         self.proj_first = True
         if 'proj_first' in params['fusion']['args'] and \
-            not params['fusion']['args']['proj_first']:
+                not params['fusion']['args']['proj_first']:
             self.proj_first = False
 
         # whether there is a time delay between the time that cav project
         # lidar to ego and the ego receive the delivered feature
         self.cur_ego_pose_flag = True if 'cur_ego_pose_flag' not in \
-            params['fusion']['args'] else \
+                                         params['fusion']['args'] else \
             params['fusion']['args']['cur_ego_pose_flag']
 
         self.pre_processor = build_preprocessor(params['preprocess'],
@@ -54,6 +58,8 @@ class IntermediateFusionDataset(basedataset.BaseDataset):
             train)
 
     def __getitem__(self, idx):
+        if self.start_index is not None:
+            idx = self.start_index + idx
         base_data_dict = self.retrieve_base_data(idx,
                                                  cur_ego_pose_flag=self.cur_ego_pose_flag)
 
@@ -78,6 +84,7 @@ class IntermediateFusionDataset(basedataset.BaseDataset):
             self.get_pairwise_transformation(base_data_dict,
                                              self.max_cav)
 
+        distances = []
         processed_features = []
         object_stack = []
         object_id_stack = []
@@ -91,6 +98,8 @@ class IntermediateFusionDataset(basedataset.BaseDataset):
 
         if self.visualize:
             projected_lidar_stack = []
+            true_pose_list = []
+            self_id_list = []
 
         # loop over all CAVs to process information
         for cav_id, selected_cav_base in base_data_dict.items():
@@ -103,6 +112,8 @@ class IntermediateFusionDataset(basedataset.BaseDataset):
                                       1]) ** 2)
             if distance > opencood.data_utils.datasets.COM_RANGE:
                 continue
+
+            distances.append(distance)
 
             selected_cav_processed = self.get_item_single_car(
                 selected_cav_base,
@@ -128,10 +139,13 @@ class IntermediateFusionDataset(basedataset.BaseDataset):
             if self.visualize:
                 projected_lidar_stack.append(
                     selected_cav_processed['projected_lidar'])
+                true_pose_list.append(selected_cav_processed["true_pose"])
+                self_id_list.append(cav_id)
 
         # exclude all repetitive objects
         unique_indices = \
             [object_id_stack.index(x) for x in set(object_id_stack)]
+
         object_stack = np.vstack(object_stack)
         object_stack = object_stack[unique_indices]
 
@@ -160,11 +174,12 @@ class IntermediateFusionDataset(basedataset.BaseDataset):
         velocity = velocity + (self.max_cav - len(velocity)) * [0.]
         time_delay = time_delay + (self.max_cav - len(time_delay)) * [0.]
         infra = infra + (self.max_cav - len(infra)) * [0.]
+        distances = distances + (self.max_cav - len(distances)) * [math.inf]
         spatial_correction_matrix = np.stack(spatial_correction_matrix)
-        padding_eye = np.tile(np.eye(4)[None],(self.max_cav - len(
-                                               spatial_correction_matrix),1,1))
+        padding_eye = np.tile(np.eye(4)[None], (self.max_cav - len(
+            spatial_correction_matrix), 1, 1))
         spatial_correction_matrix = np.concatenate([spatial_correction_matrix,
-                                                   padding_eye], axis=0)
+                                                    padding_eye], axis=0)
 
         processed_data_dict['ego'].update(
             {'object_bbx_center': object_bbx_center,
@@ -177,6 +192,7 @@ class IntermediateFusionDataset(basedataset.BaseDataset):
              'velocity': velocity,
              'time_delay': time_delay,
              'infra': infra,
+             'distance_to_ego': distances,
              'spatial_correction_matrix': spatial_correction_matrix,
              'pairwise_t_matrix': pairwise_t_matrix})
 
@@ -184,6 +200,10 @@ class IntermediateFusionDataset(basedataset.BaseDataset):
             processed_data_dict['ego'].update({'origin_lidar':
                 np.vstack(
                     projected_lidar_stack)})
+            true_poses= np.vstack(true_pose_list)
+            processed_data_dict['ego'].update({"true_poses":true_poses})
+            processed_data_dict['ego'].update({"self_ids":self_id_list})
+
         return processed_data_dict
 
     def get_item_single_car(self, selected_cav_base, ego_pose):
@@ -212,7 +232,30 @@ class IntermediateFusionDataset(basedataset.BaseDataset):
         object_bbx_center, object_bbx_mask, object_ids = \
             self.post_processor.generate_object_center([selected_cav_base],
                                                        ego_pose)
-
+        #true_pose
+        cav_pose = selected_cav_base['true_ego_pos']
+        extent = [2.45,1.06,0.75]
+        object2lidar = x1_to_x2(cav_pose, ego_pose)
+        # shape (3, 8)
+        bbx = create_bbx(extent).T
+        # bounding box under ego coordinate shape (4, 8)
+        bbx = np.r_[bbx, [np.ones(bbx.shape[1])]]
+        if self.visualize:
+            # project the 8 corners to world coordinate
+            bbx_lidar = np.dot(object2lidar, bbx).T
+            bbx_lidar = np.expand_dims(bbx_lidar[:, :3], 0)
+            bbx_lidar = corner_to_center(bbx_lidar, order="hwl")
+            lidar_range = self.post_processor.params['anchor_args']['cav_lidar_range'] \
+                if self.train else [-140, -40, -3, 140, 40, 1]
+            bbx_lidar = mask_boxes_outside_range_numpy(bbx_lidar,
+                                                       lidar_range,
+                                                       "hwl")
+            object_bbx_corner = \
+                box_utils.boxes_to_corners_3d(bbx_lidar,
+                                              "hwl")
+            projected_object_bbx_corner = \
+                box_utils.project_box3d(object_bbx_corner.astype(np.float32),
+                                        transformation_matrix)
         # filter lidar
         lidar_np = selected_cav_base['lidar_np']
         lidar_np = shuffle_points(lidar_np)
@@ -238,8 +281,10 @@ class IntermediateFusionDataset(basedataset.BaseDataset):
              'object_ids': object_ids,
              'projected_lidar': lidar_np,
              'processed_features': processed_lidar,
-             'velocity': velocity})
-
+             'velocity': velocity,
+             })
+        if self.visualize:
+            selected_cav_processed.update({'true_pose':projected_object_bbx_corner})
         return selected_cav_processed
 
     @staticmethod
@@ -297,11 +342,18 @@ class IntermediateFusionDataset(basedataset.BaseDataset):
         # and current timestamp
         spatial_correction_matrix_list = []
 
+        distances = []
         if self.visualize:
             origin_lidar = []
+            ego_lidar_pose_batch_list = []
+            self_id_batch_list = []
 
         for i in range(len(batch)):
             ego_dict = batch[i]['ego']
+            self_id_batch_list.append(ego_dict['self_ids'])
+
+            distances.append(ego_dict['distance_to_ego'])
+
             object_bbx_center.append(ego_dict['object_bbx_center'])
             object_bbx_mask.append(ego_dict['object_bbx_mask'])
             object_ids.append(ego_dict['object_ids'])
@@ -319,6 +371,7 @@ class IntermediateFusionDataset(basedataset.BaseDataset):
 
             if self.visualize:
                 origin_lidar.append(ego_dict['origin_lidar'])
+                ego_lidar_pose_batch_list.append(ego_dict['true_poses'])
         # convert to numpy, (B, max_num, 7)
         object_bbx_center = torch.from_numpy(np.array(object_bbx_center))
         object_bbx_mask = torch.from_numpy(np.array(object_bbx_mask))
@@ -332,7 +385,8 @@ class IntermediateFusionDataset(basedataset.BaseDataset):
         record_len = torch.from_numpy(np.array(record_len, dtype=int))
         label_torch_dict = \
             self.post_processor.collate_batch(label_dict_list)
-
+        # (B, max_cav)
+        distances = torch.from_numpy(np.array(distances, dtype=np.float32))
         # (B, max_cav)
         velocity = torch.from_numpy(np.array(velocity))
         time_delay = torch.from_numpy(np.array(time_delay))
@@ -351,6 +405,7 @@ class IntermediateFusionDataset(basedataset.BaseDataset):
                                    'object_bbx_mask': object_bbx_mask,
                                    'processed_lidar': processed_lidar_torch_dict,
                                    'record_len': record_len,
+                                   'distance_to_ego': distances,
                                    'label_dict': label_torch_dict,
                                    'object_ids': object_ids[0],
                                    'prior_encoding': prior_encoding,
@@ -362,6 +417,14 @@ class IntermediateFusionDataset(basedataset.BaseDataset):
                 np.array(downsample_lidar_minimum(pcd_np_list=origin_lidar))
             origin_lidar = torch.from_numpy(origin_lidar)
             output_dict['ego'].update({'origin_lidar': origin_lidar})
+            output_dict['ego'].update({'self_id_list': self_id_batch_list})
+
+            if ego_lidar_pose_batch_list[0] is None:
+                ego_lidar_pose_batch_list = None
+            else:
+                ego_lidar_poses = np.concatenate(ego_lidar_pose_batch_list)
+                ego_lidar_poses_tensor = torch.from_numpy(ego_lidar_poses)
+                output_dict['ego'].update({'ego_lidar_poses': ego_lidar_poses_tensor}) # np.array(batch_size,4)
 
         return output_dict
 

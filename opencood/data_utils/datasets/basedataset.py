@@ -8,6 +8,7 @@ Basedataset class for all kinds of fusion.
 
 import os
 import math
+import random
 from collections import OrderedDict
 
 import torch
@@ -19,6 +20,7 @@ from opencood.data_utils.augmentor.data_augmentor import DataAugmentor
 from opencood.hypes_yaml.yaml_utils import load_yaml
 from opencood.utils.pcd_utils import downsample_lidar_minimum
 from opencood.utils.transformation_utils import x1_to_x2
+from opencood.utils.v2_transformation_utils import dist_two_pose
 
 
 class BaseDataset(Dataset):
@@ -119,7 +121,8 @@ class BaseDataset(Dataset):
         scenario_folders = sorted([os.path.join(root_dir, x)
                                    for x in os.listdir(root_dir) if
                                    os.path.isdir(os.path.join(root_dir, x))])
-        # Structure: {scenario_id : {cav_1 : {timestamp1 : {yaml: path,
+
+         # Structure: {scenario_id : {cav_1 : {timestamp1 : {yaml: path,
         # lidar: path, cameras:list of path}}}}
         self.scenario_database = OrderedDict()
         self.len_record = []
@@ -260,7 +263,10 @@ class BaseDataset(Dataset):
                                                        cur_ego_pose_flag)
             data[cav_id]['lidar_np'] = \
                 pcd_utils.pcd_to_np(cav_content[timestamp_key_delay]['lidar'])
+            data[cav_id]['true_ego_pos'] = load_yaml(cav_content[timestamp_key]['yaml'])['lidar_pose']
+            data[cav_id]['cav_id'] = cav_id
         return data
+
 
     @staticmethod
     def extract_timestamps(yaml_files):
@@ -307,7 +313,7 @@ class BaseDataset(Dataset):
             The timestamp key saved in the cav dictionary.
         """
         # get all timestamp keys
-        timestamp_keys = list(scenario_database.items())[0][1]
+        timestamp_keys = list(scenario_database.items())[0][1]  # 获得ego代理的cav_content
         # retrieve the correct index
         timestamp_key = list(timestamp_keys.items())[timestamp_index][0]
 
@@ -333,10 +339,13 @@ class BaseDataset(Dataset):
         for cav_id, cav_content in scenario_database.items():
             cur_lidar_pose = \
                 load_yaml(cav_content[timestamp_key]['yaml'])['lidar_pose']
-            distance = \
-                math.sqrt((cur_lidar_pose[0] -
-                           ego_lidar_pose[0]) ** 2 +
-                          (cur_lidar_pose[1] - ego_lidar_pose[1]) ** 2)
+            if isinstance(cur_lidar_pose[0],np.ndarray):
+                distance = dist_two_pose(cur_lidar_pose, ego_lidar_pose)
+            else:
+                distance = \
+                    math.sqrt((cur_lidar_pose[0] -
+                               ego_lidar_pose[0]) ** 2 +
+                              (cur_lidar_pose[1] - ego_lidar_pose[1]) ** 2)
             cav_content['distance_to_ego'] = distance
             scenario_database.update({cav_id: cav_content})
 
@@ -570,9 +579,10 @@ class BaseDataset(Dataset):
         object_bbx_mask = []
         processed_lidar_list = []
         label_dict_list = []
-
+        cav_id_list = []
         if self.visualize:
             origin_lidar = []
+            split_lidar = []
 
         for i in range(len(batch)):
             ego_dict = batch[i]['ego']
@@ -580,9 +590,12 @@ class BaseDataset(Dataset):
             object_bbx_mask.append(ego_dict['object_bbx_mask'])
             processed_lidar_list.append(ego_dict['processed_lidar'])
             label_dict_list.append(ego_dict['label_dict'])
+            cav_id_list.append(ego_dict["cav_id_list"])
 
             if self.visualize:
                 origin_lidar.append(ego_dict['origin_lidar'])
+                split_lidar = ego_dict['split_lidar']
+
 
         # convert to numpy, (B, max_num, 7)
         object_bbx_center = torch.from_numpy(np.array(object_bbx_center))
@@ -600,7 +613,7 @@ class BaseDataset(Dataset):
             origin_lidar = \
                 np.array(downsample_lidar_minimum(pcd_np_list=origin_lidar))
             origin_lidar = torch.from_numpy(origin_lidar)
-            output_dict['ego'].update({'origin_lidar': origin_lidar})
+            output_dict['ego'].update({'origin_lidar': origin_lidar,"split_lidar":split_lidar,"cav_id_list":cav_id_list})
 
         return output_dict
 

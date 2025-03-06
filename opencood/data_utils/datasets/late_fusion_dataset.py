@@ -25,6 +25,8 @@ from opencood.utils.pcd_utils import \
 from opencood.utils.transformation_utils import x1_to_x2
 
 
+
+
 class LateFusionDataset(basedataset.BaseDataset):
     """
     This class is for intermediate fusion where each vehicle transmit the
@@ -160,6 +162,7 @@ class LateFusionDataset(basedataset.BaseDataset):
 
         return processed_data_dict
 
+
     def collate_batch_test(self, batch):
         """
         Customized collate function for pytorch dataloader during testing
@@ -270,4 +273,18 @@ class LateFusionDataset(basedataset.BaseDataset):
             self.post_processor.post_process(data_dict, output_dict)
         gt_box_tensor = self.post_processor.generate_gt_bbx(data_dict)
 
+        return pred_box_tensor, pred_score, gt_box_tensor
+
+
+    def post_process_no_fusion(self, data_dict, output_dict_ego):
+        """
+        The object id can not used for identifying the same object.
+        here we will to use the IoU to determine it.
+        """
+        data_dict_ego = OrderedDict()
+        data_dict_ego['ego'] = data_dict['ego']
+        gt_box_tensor = self.post_processor.generate_gt_bbx(data_dict)
+
+        pred_box_tensor, pred_score = \
+            self.post_processor.post_process(data_dict_ego, output_dict_ego)
         return pred_box_tensor, pred_score, gt_box_tensor

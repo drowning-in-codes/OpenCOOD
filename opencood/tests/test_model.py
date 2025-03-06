@@ -1,3 +1,5 @@
+import json
+
 import torch
 import torch.nn as nn
 
@@ -189,4 +191,27 @@ def test_model():
     _, model = load_saved_model(saved_path, model)
     model.eval()
 if __name__ == '__main__':
-    test_model()
+    import open3d as o3d
+
+    vis = o3d.visualization.Visualizer()
+    vis.create_window()
+
+    vis.get_render_option().background_color = [0.05, 0.05, 0.05]
+    vis.get_render_option().point_size = 5.0
+    vis.get_render_option().show_coordinate_frame = True
+
+    # used to visualize lidar points
+    vis_pcd = o3d.geometry.PointCloud()
+    # used to visualize object bounding box, maximum 50
+    vis_aabbs_gt = []
+    vis_aabbs_pred = []
+    for _ in range(50):
+        vis_aabbs_gt.append(o3d.geometry.LineSet())
+        vis_aabbs_pred.append(o3d.geometry.LineSet())
+
+    vis.poll_events()
+    vis.update_renderer()
+    vis.run()
+    print(o3d.geometry.LineSet())
+
+

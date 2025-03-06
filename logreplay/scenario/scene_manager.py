@@ -5,7 +5,7 @@ from collections import OrderedDict
 
 import carla
 import numpy as np
-
+from pathlib import Path
 from logreplay.assets.utils import find_town, find_blue_print
 from logreplay.assets.presave_lib import bcolors
 from logreplay.map.map_manager import MapManager
@@ -58,7 +58,7 @@ class SceneManager:
         cav_sample = os.path.join(folder, cav_list[0])
 
         yaml_files = \
-            sorted([os.path.join(cav_sample, x)
+            sorted([Path(os.path.join(cav_sample, x)).as_posix()
                     for x in os.listdir(cav_sample) if
                     x.endswith('.yaml') and 'additional' not in x])
         self.timestamps = self.extract_timestamps(yaml_files)
@@ -73,9 +73,11 @@ class SceneManager:
 
                 self.database[timestamp][cav_id] = OrderedDict()
                 cav_path = os.path.join(folder, cav_id)
-
                 yaml_file = os.path.join(cav_path,
                                          timestamp + '.yaml')
+                # 判断是否是windows
+                if os.name == 'nt':
+                    yaml_file = yaml_file.replace('\\', '/')
                 self.database[timestamp][cav_id]['yaml'] = \
                     yaml_file
 

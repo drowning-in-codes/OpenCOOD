@@ -37,9 +37,9 @@ class ScaledDotProductAttention(nn.Module):
         self.sqrt_dim = np.sqrt(dim)
 
     def forward(self, query, key, value):
-        score = torch.bmm(query, key.transpose(1, 2)) / self.sqrt_dim
+        score = torch.bmm(query, key.transpose(1, 2)) / self.sqrt_dim # [-1,cav_num,C]  [-1,C,cav_num]
         attn = F.softmax(score, -1)
-        context = torch.bmm(attn, value)
+        context = torch.bmm(attn, value) # [-1,cav_num,cav_num] [-1,cav_num,C]
         return context
 
 

@@ -3,16 +3,16 @@ channels:
   - defaults
 dependencies:
   - pip==21.1.2
-  - python==3.7.11
+  - python==3.8.5
   - pip:
-    - matplotlib==3.4.2
+    - matplotlib
     - numpy
     - open3d
-    - opencv-python==4.5.5.62
+    - opencv-python
     - cython
     - pygame
     - tensorboardX
-    - shapely==2.0.0
+    - shapely
     - einops
     - cumm
     - timm

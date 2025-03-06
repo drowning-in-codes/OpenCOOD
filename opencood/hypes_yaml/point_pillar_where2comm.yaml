@@ -1,26 +1,27 @@
 name: point_pillar_where2comm
-root_dir: '/data/opv2x/train'
-validate_dir: '/data/opv2x/validate'
+#root_dir: 'opv2x/train'
+#validate_dir: 'opv2x/validate'
+root_dir: "opv2v_data_dumping/train"
+validate_dir: "opv2v_data_dumping/test_culver_city"
 
-
-wild_setting:
-  seed: 20
-  async: False
-  async_mode: 'sim'
-  async_overhead: 100
-  loc_err: False
-  xyz_std: 0.2
-  ryp_std: 0.2
-  data_size: 1.06  # Mb
-  transmission_speed: 27  # Mbps
-  backbone_delay: 10  # ms
+#wild_setting:
+#  seed: 20
+#  async: False
+#  async_mode: 'sim'
+#  async_overhead: 100
+#  loc_err: False
+#  xyz_std: 0.2
+#  ryp_std: 0.2
+#  data_size: 1.06  # Mb
+#  transmission_speed: 27  # Mbps
+#  backbone_delay: 10  # ms
 
 yaml_parser: 'load_point_pillar_params'
 train_params:
   batch_size: &batch_size 1
-  epoches: &epoches 50
-  eval_freq: 1
-  save_freq: 1
+  epoches: &epoches 30
+  eval_freq: 100
+  save_freq: 10
   max_cav: &max_cav 5
 
 fusion:

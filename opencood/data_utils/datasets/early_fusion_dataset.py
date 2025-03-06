@@ -56,7 +56,6 @@ class EarlyFusionDataset(basedataset.BaseDataset):
         projected_lidar_stack = []
         object_stack = []
         object_id_stack = []
-
         # loop over all CAVs to process information
         for cav_id, selected_cav_base in base_data_dict.items():
             # check if the cav is within the communication range with ego
@@ -68,7 +67,6 @@ class EarlyFusionDataset(basedataset.BaseDataset):
                                       1]) ** 2)
             if distance > opencood.data_utils.datasets.COM_RANGE:
                 continue
-
             selected_cav_processed = self.get_item_single_car(
                 selected_cav_base,
                 ego_lidar_pose)
@@ -78,13 +76,13 @@ class EarlyFusionDataset(basedataset.BaseDataset):
                 selected_cav_processed['projected_lidar'])
             object_stack.append(selected_cav_processed['object_bbx_center'])
             object_id_stack += selected_cav_processed['object_ids']
-
+        
         # exclude all repetitive objects
         unique_indices = \
             [object_id_stack.index(x) for x in set(object_id_stack)]
         object_stack = np.vstack(object_stack)
         object_stack = object_stack[unique_indices]
-
+        
         # make sure bounding boxes across all frames have the same number
         object_bbx_center = \
             np.zeros((self.params['postprocess']['max_num'], 7))
@@ -92,6 +90,7 @@ class EarlyFusionDataset(basedataset.BaseDataset):
         object_bbx_center[:object_stack.shape[0], :] = object_stack
         mask[:object_stack.shape[0]] = 1
 
+        ind_lidar = projected_lidar_stack
         # convert list to numpy array, (N, 4)
         projected_lidar_stack = np.vstack(projected_lidar_stack)
 
@@ -141,9 +140,8 @@ class EarlyFusionDataset(basedataset.BaseDataset):
              'label_dict': label_dict})
 
         if self.visualize:
-            processed_data_dict['ego'].update({'origin_lidar':
-                                                   projected_lidar_stack})
-
+            processed_data_dict['ego'].update({'origin_lidar':projected_lidar_stack,
+                                              'split_lidar':ind_lidar,"cav_id_list":base_data_dict.keys()})
         return processed_data_dict
 
     def get_item_single_car(self, selected_cav_base, ego_pose):
@@ -212,6 +210,7 @@ class EarlyFusionDataset(basedataset.BaseDataset):
         output_dict = {}
 
         for cav_id, cav_content in batch.items():
+            print("cav_id: ", cav_id)
             output_dict.update({cav_id: {}})
             # shape: (1, max_num, 7)
             object_bbx_center = \

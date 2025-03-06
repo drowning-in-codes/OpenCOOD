@@ -100,7 +100,7 @@ class PointPillarWhere2comm(nn.Module):
 
         if self.multi_scale:
             # Bypass communication cost, communicate at high resolution, neither shrink nor compress
-            fused_feature, communication_rates = self.fusion_net(batch_dict['spatial_features'],
+            fused_feature, communication_rates,communication_masks = self.fusion_net(batch_dict['spatial_features'],
                                                                  psm_single,
                                                                  record_len,
                                                                  pairwise_t_matrix,
@@ -108,7 +108,7 @@ class PointPillarWhere2comm(nn.Module):
             if self.shrink_flag:
                 fused_feature = self.shrink_conv(fused_feature)
         else:
-            fused_feature, communication_rates = self.fusion_net(spatial_features_2d,
+            fused_feature, communication_rates,communication_masks = self.fusion_net(spatial_features_2d,
                                                                  psm_single,
                                                                  record_len,
                                                                  pairwise_t_matrix)
@@ -116,5 +116,5 @@ class PointPillarWhere2comm(nn.Module):
         psm = self.cls_head(fused_feature)
         rm = self.reg_head(fused_feature)
 
-        output_dict = {'psm': psm, 'rm': rm, 'com': communication_rates}
+        output_dict = {'psm': psm, 'rm': rm, 'com': communication_rates,'mask':communication_masks}
         return output_dict

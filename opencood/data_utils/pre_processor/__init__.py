@@ -6,12 +6,14 @@ from opencood.data_utils.pre_processor.base_preprocessor import BasePreprocessor
 from opencood.data_utils.pre_processor.voxel_preprocessor import VoxelPreprocessor
 from opencood.data_utils.pre_processor.bev_preprocessor import BevPreprocessor
 from opencood.data_utils.pre_processor.sp_voxel_preprocessor import SpVoxelPreprocessor
+from opencood.data_utils.pre_processor.v2_sp_voxel_preprocessor import SpVoxelPreprocessor as V2SpVoxelPreprocessor
 
 __all__ = {
     'BasePreprocessor': BasePreprocessor,
     'VoxelPreprocessor': VoxelPreprocessor,
     'BevPreprocessor': BevPreprocessor,
-    'SpVoxelPreprocessor': SpVoxelPreprocessor
+    'SpVoxelPreprocessor': SpVoxelPreprocessor,
+    'V2SpVoxelPreprocessor':V2SpVoxelPreprocessor
 }
 
 
@@ -20,7 +22,7 @@ def build_preprocessor(preprocess_cfg, train):
     error_message = f"{process_method_name} is not found. " \
                      f"Please add your processor file's name in opencood/" \
                      f"data_utils/processor/init.py"
-    assert process_method_name in ['BasePreprocessor', 'VoxelPreprocessor',
+    assert process_method_name in ['BasePreprocessor', 'VoxelPreprocessor','V2SpVoxelPreprocessor',
                                    'BevPreprocessor', 'SpVoxelPreprocessor'], \
         error_message
 

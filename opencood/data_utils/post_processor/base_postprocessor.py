@@ -12,6 +12,8 @@ import torch
 from opencood.utils import box_utils
 
 
+
+
 class BasePostprocessor(object):
     """
     Template for Anchor generator.
@@ -120,7 +122,7 @@ class BasePostprocessor(object):
             Length is number of bbx in current sample.
         """
         from opencood.data_utils.datasets import GT_RANGE
-
+        print("reference_lidar_pose",reference_lidar_pose)
         tmp_object_dict = {}
         for cav_content in cav_contents:
             tmp_object_dict.update(cav_content['params']['vehicles'])

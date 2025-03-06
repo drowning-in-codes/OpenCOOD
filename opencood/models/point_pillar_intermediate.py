@@ -10,6 +10,8 @@ import torch.nn as nn
 from opencood.models.sub_modules.pillar_vfe import PillarVFE
 from opencood.models.sub_modules.point_pillar_scatter import PointPillarScatter
 from opencood.models.sub_modules.att_bev_backbone import AttBEVBackbone
+from opencood.models.sub_modules.downsample_conv import DownsampleConv
+from opencood.models.sub_modules.naive_compress import NaiveCompressor
 
 class PointPillarIntermediate(nn.Module):
     def __init__(self, args):
@@ -20,12 +22,21 @@ class PointPillarIntermediate(nn.Module):
                                     num_point_features=4,
                                     voxel_size=args['voxel_size'],
                                     point_cloud_range=args['lidar_range'])
+
         self.scatter = PointPillarScatter(args['point_pillar_scatter'])
         self.backbone = AttBEVBackbone(args['base_bev_backbone'], 64)
+        self.shrink_flag = False
+        if 'shrink_header' in args:
+            self.shrink_flag = True
+            self.shrink_conv = DownsampleConv(args['shrink_header'])
+        self.compression = False
 
-        self.cls_head = nn.Conv2d(128 * 3, args['anchor_number'],
+        if 'compression' in args and args['compression'] > 0:
+            self.compression = True
+            self.naive_compressor = NaiveCompressor(256, args['compression'])
+        self.cls_head = nn.Conv2d(128 * 2, args['anchor_number'],
                                   kernel_size=1)
-        self.reg_head = nn.Conv2d(128 * 3, 7 * args['anchor_num'],
+        self.reg_head = nn.Conv2d(128 * 2, 7 * args['anchor_num'],
                                   kernel_size=1)
 
     def forward(self, data_dict):
@@ -42,10 +53,19 @@ class PointPillarIntermediate(nn.Module):
 
         batch_dict = self.pillar_vfe(batch_dict)
         batch_dict = self.scatter(batch_dict)
+        spatial_features_2d = batch_dict["spatial_features"]
+
+        batch_dict['spatial_features'] = spatial_features_2d
         batch_dict = self.backbone(batch_dict)
 
         spatial_features_2d = batch_dict['spatial_features_2d']
 
+        # downsample feature to reduce memory
+        if self.shrink_flag:
+            spatial_features_2d = self.shrink_conv(spatial_features_2d)
+        # compressor
+        if self.compression:
+            spatial_features_2d = self.naive_compressor(spatial_features_2d)
         psm = self.cls_head(spatial_features_2d)
         rm = self.reg_head(spatial_features_2d)
 

@@ -91,7 +91,7 @@ class Attention(nn.Module):
             = *x.shape, x.device, self.heads
 
         # flatten
-        x = rearrange(x, 'b l x y w1 w2 d -> (b x y) (l w1 w2) d')
+        x = rearrange(x, 'b l x y w1 w2 d -> (b x y) (l w1 w2) d') # [B,L,H//w,W//w,w,w,C] -> [B*H//w*W//w,w*w*L,C]
         # project for queries, keys, values
         q, k, v = self.to_qkv(x).chunk(3, dim=-1)
         # split heads
@@ -109,7 +109,7 @@ class Attention(nn.Module):
 
         # mask shape if exist: b x y w1 w2 e l
         if mask is not None:
-            # b x y w1 w2 e l -> (b x y) 1 (l w1 w2)
+            # b x y w1 w2 e l -> (b x y) 1 (l w1  w2)
             mask = rearrange(mask, 'b x y w1 w2 e l -> (b x y) e (l w1 w2)')
             # (b x y) 1 1 (l w1 w2) = b h 1 n
             mask = mask.unsqueeze(1)
@@ -173,7 +173,8 @@ class SwapFusionBlockMask(nn.Module):
         mask_swap = rearrange(mask_swap,
                               'b (x w1) (y w2) e l -> b x y w1 w2 e l',
                               w1=self.window_size, w2=self.window_size)
-        x = rearrange(x, 'b m d (x w1) (y w2) -> b m x y w1 w2 d',
+
+        x = rearrange(x, 'b m d (x w1) (y w2) -> b m x y w1 w2 d', # [B,L,C,H,W] -> [B,L,H//w,W//w,w,w,C]
                       w1=self.window_size, w2=self.window_size)
         x = self.window_attention(x, mask=mask_swap)
         x = self.window_ffd(x)
@@ -240,15 +241,15 @@ class SwapFusionEncoder(nn.Module):
         super(SwapFusionEncoder, self).__init__()
 
         self.layers = nn.ModuleList([])
-        self.depth = args['depth']
+        self.depth = args['depth'] # 3
 
         # block related
-        input_dim = args['input_dim']
+        input_dim = args['input_dim'] # 256
         mlp_dim = args['mlp_dim']
-        agent_size = args['agent_size']
-        window_size = args['window_size']
+        agent_size = args['agent_size']  # 5
+        window_size = args['window_size'] # 4
         drop_out = args['drop_out']
-        dim_head = args['dim_head']
+        dim_head = args['dim_head'] # 32
 
         self.mask = False
         if 'mask' in args:
@@ -274,7 +275,7 @@ class SwapFusionEncoder(nn.Module):
 
         # mlp head
         self.mlp_head = nn.Sequential(
-            Reduce('b m d h w -> b d h w', 'mean'),
+            Reduce('b m d h w -> b d h w', 'mean'), # [B,L,C,H,W] -> [B,C,H,W]
             Rearrange('b d h w -> b h w d'),
             nn.LayerNorm(input_dim),
             nn.Linear(input_dim, input_dim),

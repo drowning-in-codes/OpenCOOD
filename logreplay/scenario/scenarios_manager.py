@@ -18,7 +18,6 @@ class ScenariosManager:
     ----------
 
     """
-
     def __init__(self, scenario_params):
         # this defines carla world sync mode, weather, town name, and seed.
         self.scene_params = scenario_params
@@ -34,12 +33,17 @@ class ScenariosManager:
 
         # loop over all scenarios
         for (i, scenario_folder) in enumerate(scenario_folders):
+            if i < 5:
+                continue
             scene_name = os.path.split(scenario_folder)[-1]
+            
             self.scenario_database.update({scene_name: OrderedDict()})
 
             # load the collection yaml file
+            print(scenario_folder)
             protocol_yml = [x for x in os.listdir(scenario_folder)
                             if x.endswith('.yaml')]
+            print(protocol_yml)    
             collection_params = load_yaml(os.path.join(scenario_folder,
                                                        protocol_yml[0]))
 
@@ -70,7 +74,7 @@ class ScenariosManager:
 
 if __name__ == '__main__':
     from opencood.hypes_yaml.yaml_utils import load_yaml
-    scene_params = load_yaml('../hypes_yaml/replay.yaml')
+    scene_params = load_yaml('./hypes_yaml/replay.yaml')
     scenarion_manager = ScenariosManager(scenario_params=scene_params)
     scenarion_manager.tick()
     print('test passed')

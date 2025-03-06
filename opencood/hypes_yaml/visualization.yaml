@@ -1,10 +1,11 @@
 # this yaml is only for visualization
 name: visualization
 
-yaml_parser: "load_voxel_params"
-root_dir: "opv2v_data_dumping/train"
-validate_dir: "opv2v_data_dumping/test"
-
+yaml_parser: load_voxel_params
+root_dir: "../../opv2v_data_dumping/train"
+validate_dir: "../../opv2v_data_dumping/test"
+#root_dir: '../../v2v4real/test'
+#validate_dir: '../../v2v4real/test'
 train_params:
   batch_size: &batch_size 4
   epoches: 100
@@ -19,6 +20,7 @@ fusion:
 preprocess:
   # options: BasePreprocessor, VoxelPreprocessor, BevPreprocessor
   core_method: 'SpVoxelPreprocessor'
+#  core_method: 'V2SpVoxelPreprocessor'
   args:
     voxel_size: &voxel_size [0.4, 0.4, 0.4]
     max_points_per_voxel: &T 32

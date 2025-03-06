@@ -47,7 +47,7 @@ class Communication(nn.Module):
         communication_masks = []
         communication_rates = []
         for b in range(B):
-            ori_communication_maps, _ = batch_confidence_maps[b].sigmoid().max(dim=1, keepdim=True)
+            ori_communication_maps, _ = batch_confidence_maps[b].sigmoid().max(dim=1, keepdim=True) # ?
             if self.smooth:
                 communication_maps = self.gaussian_filter(ori_communication_maps)
             else:
@@ -152,7 +152,7 @@ class Where2comm(nn.Module):
                         communication_rates = torch.tensor(1).to(x.device)
                     else:
                         # Prune
-                        batch_confidence_maps = self.regroup(psm_single, record_len)
+                        batch_confidence_maps = self.regroup(psm_single, record_len) # [sum(num)_cav),2,H,W]
                         communication_masks, communication_rates = self.naive_communication(batch_confidence_maps, B)
                         if x.shape[-1] != communication_masks.shape[-1]:
                             communication_masks = F.interpolate(communication_masks, size=(x.shape[-2], x.shape[-1]),
@@ -205,4 +205,4 @@ class Where2comm(nn.Module):
                 neighbor_feature = batch_node_features[b]
                 x_fuse.append(self.fuse_modules(neighbor_feature))
             x_fuse = torch.stack(x_fuse)
-        return x_fuse, communication_rates
+        return x_fuse, communication_rates,communication_masks if not self.fully else 0

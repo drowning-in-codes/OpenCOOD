@@ -116,6 +116,7 @@ class PillarVFE(nn.Module):
         f_center[:, :, 0] = voxel_features[:, :, 0] - (
                 coords[:, 3].to(voxel_features.dtype).unsqueeze(
                     1) * self.voxel_x + self.x_offset)
+
         f_center[:, :, 1] = voxel_features[:, :, 1] - (
                 coords[:, 2].to(voxel_features.dtype).unsqueeze(
                     1) * self.voxel_y + self.y_offset)

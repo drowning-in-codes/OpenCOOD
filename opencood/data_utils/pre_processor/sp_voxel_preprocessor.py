@@ -128,7 +128,7 @@ class SpVoxelPreprocessor(BasePreprocessor):
             coords = batch[i]['voxel_coords']
             voxel_coords.append(
                 np.pad(coords, ((0, 0), (1, 0)),
-                       mode='constant', constant_values=i))
+                       mode='constant', constant_values=i)) # 给坐标添加了batch_index常量
 
         voxel_num_points = torch.from_numpy(np.concatenate(voxel_num_points))
         voxel_features = torch.from_numpy(np.concatenate(voxel_features))
@@ -159,13 +159,13 @@ class SpVoxelPreprocessor(BasePreprocessor):
             torch.from_numpy(np.concatenate(batch['voxel_num_points']))
         coords = batch['voxel_coords']
         voxel_coords = []
-
+        
         for i in range(len(coords)):
             voxel_coords.append(
                 np.pad(coords[i], ((0, 0), (1, 0)),
                        mode='constant', constant_values=i))
-        voxel_coords = torch.from_numpy(np.concatenate(voxel_coords))
 
+        voxel_coords = torch.from_numpy(np.concatenate(voxel_coords))
         return {'voxel_features': voxel_features,
                 'voxel_coords': voxel_coords,
                 'voxel_num_points': voxel_num_points}

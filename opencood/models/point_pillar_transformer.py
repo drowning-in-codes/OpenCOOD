@@ -96,7 +96,7 @@ class PointPillarTransformer(nn.Module):
         # compressor
         if self.compression:
             spatial_features_2d = self.naive_compressor(spatial_features_2d)
-        # N, C, H, W -> B,  L, C, H, W
+        # N, C, H, W -> B, L, C, H, W
         regroup_feature, mask = regroup(spatial_features_2d,
                                         record_len,
                                         self.max_cav)

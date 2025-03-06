@@ -9,6 +9,23 @@ import numpy as np
 from einops import rearrange
 from opencood.utils.common_utils import torch_tensor_to_numpy
 
+def splitgroup(regroup_feature, record_len):
+    """
+    Split the regroup_feature into a list of features based on the record_len.
+    :param regroup_feature:
+    :param record_len:
+    :return:
+    """
+    # [B,L,C,H,W] -> [N,C,H,W]
+    assert regroup_feature.ndim == 5, "The dimension of regroup_feature should be 5."
+    B,L,C,H,W = regroup_feature.shape
+    dense_feature = []
+    for batch_feature in regroup_feature:
+        # [L,C,H,W] -> [N,C,H,W]
+        batch_feature = batch_feature[:record_len[0]]
+        dense_feature.append(batch_feature)
+    dense_feature = torch.cat(dense_feature,dim=0)
+    return dense_feature
 
 def regroup(dense_feature, record_len, max_len):
     """

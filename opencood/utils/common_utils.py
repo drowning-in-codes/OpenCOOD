@@ -176,6 +176,9 @@ def torch_tensor_to_numpy(torch_tensor):
     -------
     A numpy array.
     """
+    
+    if isinstance(torch_tensor,list):
+        return [torch_tensor_to_numpy(tensor) for tensor in torch_tensor]
     return torch_tensor.numpy() if not torch_tensor.is_cuda else \
         torch_tensor.cpu().detach().numpy()
 

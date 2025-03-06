@@ -1,6 +1,6 @@
 name: corpbevtlidar
-root_dir: 'v2xset/train'
-validate_dir: 'v2xset/validate'
+root_dir: 'opv2v_data_dumping/train'
+validate_dir: 'opv2v_data_dumping/train'
 
 wild_setting:
   async: false
@@ -15,7 +15,7 @@ wild_setting:
 
 yaml_parser: "load_point_pillar_params"
 train_params:
-  batch_size: &batch_size 4
+  batch_size: &batch_size 2
   epoches: &epoches 90
   eval_freq: 2
   save_freq: 1

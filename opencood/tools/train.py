@@ -2,7 +2,6 @@
 # Author: Runsheng Xu <rxx3386@ucla.edu>
 # License: TDG-Attribution-NonCommercial-NoDistrib
 
-
 import argparse
 import os
 import statistics
@@ -53,24 +52,24 @@ def main():
 
         train_loader = DataLoader(opencood_train_dataset,
                                   batch_sampler=batch_sampler_train,
-                                  num_workers=8,
+                                  num_workers=0,
                                   collate_fn=opencood_train_dataset.collate_batch_train)
         val_loader = DataLoader(opencood_validate_dataset,
                                 sampler=sampler_val,
-                                num_workers=8,
+                                num_workers=0,
                                 collate_fn=opencood_train_dataset.collate_batch_train,
                                 drop_last=False)
     else:
         train_loader = DataLoader(opencood_train_dataset,
                                   batch_size=hypes['train_params']['batch_size'],
-                                  num_workers=8,
+                                  num_workers=0,
                                   collate_fn=opencood_train_dataset.collate_batch_train,
                                   shuffle=True,
                                   pin_memory=False,
                                   drop_last=True)
         val_loader = DataLoader(opencood_validate_dataset,
                                 batch_size=hypes['train_params']['batch_size'],
-                                num_workers=8,
+                                num_workers=0,
                                 collate_fn=opencood_train_dataset.collate_batch_train,
                                 shuffle=False,
                                 pin_memory=False,
@@ -153,6 +152,7 @@ def main():
             # as well
             if not opt.half:
                 ouput_dict = model(batch_data['ego'])
+                
                 # first argument is always your output dictionary,
                 # second argument is always your label dictionary.
                 final_loss = criterion(ouput_dict,
@@ -162,11 +162,8 @@ def main():
                     ouput_dict = model(batch_data['ego'])
                     final_loss = criterion(ouput_dict,
                                            batch_data['ego']['label_dict'])
-
-
             criterion.logging(epoch, i, len(train_loader), writer, pbar=pbar2)
             pbar2.update(1)
-
             if not opt.half:
                 final_loss.backward()
                 optimizer.step()

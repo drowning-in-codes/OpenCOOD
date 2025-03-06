@@ -29,6 +29,8 @@ def test_parser():
                         help='late, early or intermediate')
     parser.add_argument('--show_vis', action='store_true',
                         help='whether to show image visualization result')
+    parser.add_argument('--epoch', '-e',type=int,required=False,
+                        help='specify epoch')
     parser.add_argument('--show_sequence', action='store_true',
                         help='whether to show video visualization result.'
                              'it can note be set true with show_vis together ')
@@ -59,7 +61,7 @@ def main():
     print(f"{len(opencood_dataset)} samples found.")
     data_loader = DataLoader(opencood_dataset,
                              batch_size=1,
-                             num_workers=16,
+                             num_workers=0,
                              collate_fn=opencood_dataset.collate_batch_test,
                              shuffle=False,
                              pin_memory=False,

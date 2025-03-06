@@ -1,4 +1,4 @@
-name: point_pillar_intermediate_fusion
+name: point_pillar_raanet_intermediate_fusion
 root_dir: "opv2v_data_dumping/train"
 validate_dir: "opv2v_data_dumping/validate"
 
@@ -6,7 +6,7 @@ yaml_parser: "load_point_pillar_params"
 train_params:
   batch_size: &batch_size 2
   epoches: 15
-  eval_freq: 1
+  eval_freq: 10
   save_freq: 1
 
 fusion:

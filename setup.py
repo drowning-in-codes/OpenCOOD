@@ -7,7 +7,6 @@ from os.path import dirname, realpath
 from setuptools import setup, find_packages, Distribution
 from opencood.version import __version__
 
-
 def _read_requirements_file():
     """Return the elements in requirements.txt."""
     req_file_path = '%s/requirements.txt' % dirname(realpath(__file__))
@@ -25,6 +24,6 @@ setup(
     author_email='rxx3386@ucla.edu',
     description='An opensource pytorch framework for autonomous driving '
                 'cooperative detection',
-    long_description=open("README.md").read(),
+    long_description=open("README.md",encoding="utf-8").read(),
     install_requires=_read_requirements_file(),
 )

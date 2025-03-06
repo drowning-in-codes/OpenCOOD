@@ -145,16 +145,18 @@ class VoxelPostprocessor(BasePostprocessor):
         id_highest, id_highest_gt = id_highest[mask], id_highest_gt[mask]
 
         # find anchors iou > params['pos_iou']
+        # 如果一个anchor_box对于某个gt_box的iou大于pos_threshold,则认为是正样本
         id_pos, id_pos_gt = \
             np.where(iou >
                      self.params['target_args']['pos_threshold'])
         #  find anchors iou < params['neg_iou']
+        # 如果一个anchor_box对于素有gt_box的iou都小于neg_threshold,则认为是负样本
         id_neg = np.where(np.sum(iou <
                                  self.params['target_args']['neg_threshold'],
                                  axis=1) == iou.shape[1])[0]
-        id_pos = np.concatenate([id_pos, id_highest])
-        id_pos_gt = np.concatenate([id_pos_gt, id_highest_gt])
-        id_pos, index = np.unique(id_pos, return_index=True)
+        id_pos = np.concatenate([id_pos, id_highest]) # 将pos和对于每个gt_box iou最高的anchor concat在一起
+        id_pos_gt = np.concatenate([id_pos_gt, id_highest_gt]) # 将pos iou的对应的gt_box和每个gt_box concat在一起
+        id_pos, index = np.unique(id_pos, return_index=True) # 返回唯一的值
         id_pos_gt = id_pos_gt[index]
         id_neg.sort()
 
@@ -268,13 +270,13 @@ class VoxelPostprocessor(BasePostprocessor):
             anchor_box = cav_content['anchor_box']
 
             # classification probability
+            # probability score map
             prob = output_dict[cav_id]['psm']
             prob = F.sigmoid(prob.permute(0, 2, 3, 1))
             prob = prob.reshape(1, -1)
 
             # regression map
             reg = output_dict[cav_id]['rm']
-
             # convert regression map back to bounding box
             # (N, W*L*anchor_num, 7)
             batch_box3d = self.delta_to_boxes3d(reg, anchor_box)
@@ -343,7 +345,6 @@ class VoxelPostprocessor(BasePostprocessor):
         scores = scores[mask]
 
         assert scores.shape[0] == pred_box3d_tensor.shape[0]
-
         return pred_box3d_tensor, scores
 
     @staticmethod
@@ -366,6 +367,8 @@ class VoxelPostprocessor(BasePostprocessor):
         box3d : torch.Tensor
             (N, W*L*2, 7)
         """
+        # 模型預測的是deltas,也就是增量,需要將其轉換為真實的3d bbx
+
         # batch size
         N = deltas.shape[0]
         if channel_swap:
@@ -384,6 +387,7 @@ class VoxelPostprocessor(BasePostprocessor):
         anchors_d = torch.sqrt(
             anchors_reshaped[:, 4] ** 2 + anchors_reshaped[:, 5] ** 2)
         anchors_d = anchors_d.repeat(N, 2, 1).transpose(1, 2)
+
         anchors_reshaped = anchors_reshaped.repeat(N, 1, 1)
 
         # Inv-normalize to get xyz

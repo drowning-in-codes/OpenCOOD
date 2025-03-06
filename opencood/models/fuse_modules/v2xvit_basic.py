@@ -17,8 +17,7 @@ class STTF(nn.Module):
     def forward(self, x, mask, spatial_correction_matrix):
         x = x.permute(0, 1, 4, 2, 3)
         dist_correction_matrix = get_discretized_transformation_matrix(
-            spatial_correction_matrix, self.discrete_ratio,
-            self.downsample_rate)
+            spatial_correction_matrix, self.discrete_ratio,self.downsample_rate)
         # Only compensate non-ego vehicles
         B, L, C, H, W = x.shape
 
@@ -154,7 +153,6 @@ class V2XTEncoder(nn.Module):
             ]))
 
     def forward(self, x, mask, spatial_correction_matrix):
-
         # transform the features to the current timestamp
         # velocity, time_delay, infra
         # (B,L,H,W,3)

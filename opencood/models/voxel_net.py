@@ -149,7 +149,7 @@ class RPN(nn.Module):
         self.block_3 += [nn.Conv2d(256, 256, 3, 1, 1) for _ in range(5)]
         self.block_3 = nn.Sequential(*self.block_3)
 
-        self.deconv_1 = nn.Sequential(nn.ConvTranspose2d(256, 256, 4, 4, 0),
+        self.deconv_1 = nn.Sequential(nn.ConvTran>spose2d(256, 256, 4, 4, 0),
                                       nn.BatchNorm2d(256))
         self.deconv_2 = nn.Sequential(nn.ConvTranspose2d(128, 256, 2, 2, 0),
                                       nn.BatchNorm2d(256))

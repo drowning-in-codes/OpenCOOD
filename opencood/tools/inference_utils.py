@@ -36,10 +36,37 @@ def inference_late_fusion(batch_data, model, dataset):
 
     pred_box_tensor, pred_score, gt_box_tensor = \
         dataset.post_process(batch_data,
-                             output_dict)
-
+                                 output_dict)
     return pred_box_tensor, pred_score, gt_box_tensor
 
+def inference_no_fusion(batch_data, model, dataset):
+    """
+    Model inference for no fusion.
+
+    Parameters
+    ----------
+    batch_data : dict
+    model : opencood.object
+    dataset : opencood.LateFusionDataset
+
+    Returns
+    -------
+    pred_box_tensor : torch.Tensor
+        The tensor of prediction bounding box after NMS.
+    gt_box_tensor : torch.Tensor
+        The tensor of gt bounding box.
+    """
+    output_dict_ego = OrderedDict()
+
+    output_dict_ego['ego'] = model(batch_data['ego'])
+    # output_dict only contains ego
+    # but batch_data havs all cavs, because we need the gt box inside.
+
+    pred_box_tensor, pred_score, gt_box_tensor = \
+        dataset.post_process_no_fusion(batch_data,  # only for late fusion dataset
+                             output_dict_ego)
+
+    return pred_box_tensor, pred_score, gt_box_tensor
 
 def inference_early_fusion(batch_data, model, dataset):
     """

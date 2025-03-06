@@ -1,9 +1,23 @@
+# output vis files
+*.png
+*.jpg
+*.pth
+
+# CArla simutalor
+WindowsNoEditor/
+
+# dataset
+v2xset/
+v2v4real/
+opv2v_data_dumping/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 *$py.class
 
 .DS_Store
+
 
 # C extensions
 *.so

@@ -45,11 +45,9 @@ class BaseWindowAttention(nn.Module):
 
     def forward(self, x):
         b, l, h, w, c, m = *x.shape, self.heads
-
         qkv = self.to_qkv(x).chunk(3, dim=-1)
         new_h = h // self.window_size
         new_w = w // self.window_size
-
         # q : (b, l, m, new_h*new_w, window_size^2, c_head)
         q, k, v = map(
             lambda t: rearrange(t,
@@ -99,7 +97,7 @@ class PyramidWindowAttention(nn.Module):
                                                   drop_out,
                                                   ws,
                                                   relative_pos_embedding))
-        self.fuse_mehod = fuse_method
+        self.fuse_method = fuse_method
         if fuse_method == 'split_attn':
             self.split_attn = SplitAttn(256)
 
@@ -107,12 +105,12 @@ class PyramidWindowAttention(nn.Module):
         output = None
         # naive fusion will just sum up all window attention output and do a
         # mean
-        if self.fuse_mehod == 'naive':
+        if self.fuse_method == 'naive':
             for wmsa in self.pwmsa:
                 output = wmsa(x) if output is None else output + wmsa(x)
             return output / len(self.pwmsa)
 
-        elif self.fuse_mehod == 'split_attn':
+        elif self.fuse_method == 'split_attn':
             window_list = []
             for wmsa in self.pwmsa:
                 window_list.append(wmsa(x))

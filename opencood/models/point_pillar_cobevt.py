@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from einops import rearrange, repeat
-
+import matplotlib.pyplot as plt
 from opencood.models.sub_modules.pillar_vfe import PillarVFE
 from opencood.models.sub_modules.point_pillar_scatter import PointPillarScatter
 from opencood.models.sub_modules.base_bev_backbone import BaseBEVBackbone
@@ -88,6 +88,12 @@ class PointPillarCoBEVT(nn.Module):
         batch_dict = self.backbone(batch_dict)
 
         spatial_features_2d = batch_dict['spatial_features_2d']
+        # fig,axes = plt.subplots(1,2)
+        # 画特征图
+        # max_feature = torch.max(spatial_features_2d[0],dim=1)[0]
+        # avg_feature = torch.mean(spatial_features_2d[0],dim=1)
+        # axes[0].matshow(max_feature.detach().cpu().numpy(), cmap='viridis')
+        # axes[1].matshow(avg_feature.detach().cpu().numpy(), cmap='viridis')
         # downsample feature to reduce memory
         if self.shrink_flag:
             spatial_features_2d = self.shrink_conv(spatial_features_2d)
@@ -99,9 +105,11 @@ class PointPillarCoBEVT(nn.Module):
         regroup_feature, mask = regroup(spatial_features_2d,
                                         record_len,
                                         self.max_cav)
+
         com_mask = mask.unsqueeze(1).unsqueeze(2).unsqueeze(3)
+
         com_mask = repeat(com_mask,
-                          'b h w c l -> b (h new_h) (w new_w) c l',
+                          'b h w c l -> b (h new_h) (w new_w) c l', # [B,1,1,1,5] -> [B,H,W,1,5]
                           new_h=regroup_feature.shape[3],
                           new_w=regroup_feature.shape[4])
 

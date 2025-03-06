@@ -9,7 +9,6 @@ import numpy as np
 import open3d as o3d
 import matplotlib
 import matplotlib.pyplot as plt
-
 from matplotlib import cm
 
 from opencood.utils import box_utils
@@ -17,6 +16,94 @@ from opencood.utils import common_utils
 
 VIRIDIS = np.array(cm.get_cmap('plasma').colors)
 VID_RANGE = np.linspace(0.0, 1.0, VIRIDIS.shape[0])
+def align_vector_to_another(a=np.array([0, 0, 1]), b=np.array([1, 0, 0])):
+    """
+    Aligns vector a to vector b with axis angle rotation
+    """
+    if np.array_equal(a, b):
+        return None, None
+    axis_ = np.cross(a, b)
+    axis_ = axis_ / np.linalg.norm(axis_)
+    angle = np.arccos(np.dot(a, b))
+
+    return axis_, angle
+
+
+def normalized(a, axis=-1, order=2):
+    """Normalizes a numpy array of points"""
+    l2 = np.atleast_1d(np.linalg.norm(a, order, axis))
+    l2[l2 == 0] = 1
+    return a / np.expand_dims(l2, axis), l2
+
+
+class LineMesh(object):
+    def __init__(self, points, lines=None, colors=[0, 1, 0], radius=0.15):
+        """Creates a line represented as sequence of cylinder triangular meshes
+
+        Arguments:
+            points {ndarray} -- Numpy array of ponts Nx3.
+
+        Keyword Arguments:
+            lines {list[list] or None} -- List of point index pairs denoting line segments. If None, implicit lines from ordered pairwise points. (default: {None})
+            colors {list} -- list of colors, or single color of the line (default: {[0, 1, 0]})
+            radius {float} -- radius of cylinder (default: {0.15})
+        """
+        self.points = np.array(points)
+        self.lines = np.array(
+            lines) if lines is not None else self.lines_from_ordered_points(self.points)
+        self.colors = np.array(colors)
+        self.radius = radius
+        self.cylinder_segments = []
+
+        self.create_line_mesh()
+
+    @staticmethod
+    def lines_from_ordered_points(points):
+        lines = [[i, i + 1] for i in range(0, points.shape[0] - 1, 1)]
+        return np.array(lines)
+
+    def create_line_mesh(self):
+        first_points = self.points[self.lines[:, 0], :]
+        second_points = self.points[self.lines[:, 1], :]
+        line_segments = second_points - first_points
+        line_segments_unit, line_lengths = normalized(line_segments)
+
+        z_axis = np.array([0, 0, 1])
+        # Create triangular mesh cylinder segments of line
+        for i in range(line_segments_unit.shape[0]):
+            line_segment = line_segments_unit[i, :]
+            line_length = line_lengths[i]
+            # get axis angle rotation to allign cylinder with line segment
+            axis, angle = align_vector_to_another(z_axis, line_segment)
+            # Get translation vector
+            translation = first_points[i, :] + line_segment * line_length * 0.5
+            # create cylinder and apply transformations
+            cylinder_segment = o3d.geometry.TriangleMesh.create_cylinder(
+                self.radius, line_length)
+            cylinder_segment = cylinder_segment.translate(
+                translation, relative=False)
+            if axis is not None:
+                axis_a = axis * angle
+                cylinder_segment = cylinder_segment.rotate(
+                    R=o3d.geometry.get_rotation_matrix_from_axis_angle(axis_a),
+                    center=cylinder_segment.get_center())
+                # cylinder_segment = cylinder_segment.rotate(
+                #   axis_a, center=True, type=o3d.geometry.RotationType.AxisAngle)
+            # color cylinder
+            color = self.colors if self.colors.ndim == 1 else self.colors[i, :]
+            cylinder_segment.paint_uniform_color(color)
+
+            self.cylinder_segments.append(cylinder_segment)
+
+    def add_line(self, vis):
+        """Adds this line to the visualizer"""
+        for cylinder in self.cylinder_segments:
+            vis.add_geometry(cylinder)
+
+    def remove_line(self, vis):
+        """Removes this line from the visualizer"""
+        for cylinder in self.cylinder_segments:
+            vis.remove_geometry(cylinder)
 
 
 def bbx2linset(bbx_corner, order='hwl', color=(0, 1, 0)):
@@ -283,7 +370,7 @@ def visualize_single_sample_output_gt(pred_tensor,
         opt = vis.get_render_option()
         opt.background_color = np.asarray([0, 0, 0])
         opt.point_size = 1.0
-
+        opt.line_width = 16.0
         vis.add_geometry(pcd)
         for ele in pred:
             vis.add_geometry(ele)
@@ -343,7 +430,8 @@ def visualize_single_sample_output_bev(pred_box, gt_box, pcd, dataset,
     save_path : str
         Save the visualization results to given path.
     """
-
+    pred_box = pred_box[:,:4,:2] if pred_box is not None else None
+    gt_box = gt_box[:,:4,:2] if gt_box is not None else None
     if not isinstance(pcd, np.ndarray):
         pcd = common_utils.torch_tensor_to_numpy(pcd)
     if pred_box is not None and not isinstance(pred_box, np.ndarray):
@@ -351,7 +439,8 @@ def visualize_single_sample_output_bev(pred_box, gt_box, pcd, dataset,
     if gt_box is not None and not isinstance(gt_box, np.ndarray):
         gt_box = common_utils.torch_tensor_to_numpy(gt_box)
 
-    ratio = dataset.params["preprocess"]["args"]["res"]
+    ratio = dataset.params["preprocess"]["args"]["res"] if "res" in \
+        dataset.params["preprocess"]["args"] else 0.1
     L1, W1, H1, L2, W2, H2 = dataset.params["preprocess"]["cav_lidar_range"]
     bev_origin = np.array([L1, W1]).reshape(1, -1)
     # (img_row, img_col)
@@ -365,22 +454,25 @@ def visualize_single_sample_output_bev(pred_box, gt_box, pcd, dataset,
         num_bbx = pred_box.shape[0]
         for i in range(num_bbx):
             bbx = pred_box[i]
-
             bbx = ((bbx - bev_origin) / ratio).astype(int)
             bbx = bbx[:, ::-1]
-            cv2.polylines(bev_map, [bbx], True, (0, 0, 255), 1)
+            cv2.polylines(bev_map, [bbx], True, (255, 0, 0), 5)
 
     if gt_box is not None and len(gt_box):
         for i in range(gt_box.shape[0]):
             bbx = gt_box[i][:4, :2]
             bbx = (((bbx - bev_origin)) / ratio).astype(int)
             bbx = bbx[:, ::-1]
-            cv2.polylines(bev_map, [bbx], True, (255, 0, 0), 1)
+            cv2.polylines(bev_map, [bbx], True, (0, 255, 0), 5)
 
     if show_vis:
         plt.axis("off")
-        plt.imshow(bev_map)
-        plt.show()
+        bev_map = bev_map.astype(np.uint8)
+        # plt.imshow(bev_map)
+        # 创建一个与调换后尺寸相反的图像
+        # cv2.imshow('bev', swapped_image)
+        # cv2.waitKey()
+        return bev_map
     if save_path:
         plt.axis("off")
         plt.imshow(bev_map)
@@ -390,7 +482,7 @@ def visualize_single_sample_output_bev(pred_box, gt_box, pcd, dataset,
 def visualize_single_sample_dataloader(batch_data,
                                        o3d_pcd,
                                        order,
-                                       key='origin_lidar',
+                                       key='origin_lidar', # change to show different resulsts
                                        visualize=False,
                                        save_path='',
                                        oabb=False,
@@ -421,7 +513,6 @@ def visualize_single_sample_dataloader(batch_data,
     oabb : bool
         If oriented bounding box is used.
     """
-
     origin_lidar = batch_data[key]
     if not isinstance(origin_lidar, np.ndarray):
         origin_lidar = common_utils.torch_tensor_to_numpy(origin_lidar)
@@ -441,10 +532,9 @@ def visualize_single_sample_dataloader(batch_data,
     object_bbx_center = batch_data['object_bbx_center']
     object_bbx_mask = batch_data['object_bbx_mask']
     object_bbx_center = object_bbx_center[object_bbx_mask == 1]
-
     aabbs = bbx2linset(object_bbx_center, order) if not oabb else \
         bbx2oabb(object_bbx_center, order)
-    visualize_elements = [o3d_pcd] + aabbs
+    visualize_elements = [o3d_pcd] #+ aabbs
     if visualize:
         o3d.visualization.draw_geometries(visualize_elements)
 
@@ -510,7 +600,7 @@ def visualize_inference_sample_dataloader(pred_box_tensor,
     return o3d_pcd, pred_o3d_box, gt_o3d_box
 
 
-def visualize_sequence_dataloader(dataloader, order, color_mode='constant'):
+def visualize_sequence_dataloader(dataloader, order, color_mode='constant',save_path=''):
     """
     Visualize the batch data in animation.
 
@@ -541,12 +631,12 @@ def visualize_sequence_dataloader(dataloader, order, color_mode='constant'):
 
     while True:
         for i_batch, sample_batched in enumerate(dataloader):
-            print(i_batch)
+            print(f"----------{i_batch}--------------")
             pcd, aabbs = \
                 visualize_single_sample_dataloader(sample_batched['ego'],
                                                    vis_pcd,
                                                    order,
-                                                   mode=color_mode)
+                                                   mode=color_mode,save_path=save_path,visualize=False)
             if i_batch == 0:
                 vis.add_geometry(pcd)
                 for i in range(len(vis_aabbs)):
@@ -580,7 +670,11 @@ def save_o3d_visualization(element, save_path):
         The save path.
     """
     vis = o3d.visualization.Visualizer()
-    vis.create_window()
+    vis.create_window(width=1920, height=1080)
+    opt = vis.get_render_option()
+    opt.background_color = np.asarray([0, 0, 0])
+    opt.point_size = 1.0
+
     for i in range(len(element)):
         vis.add_geometry(element[i])
         vis.update_geometry(element[i])
